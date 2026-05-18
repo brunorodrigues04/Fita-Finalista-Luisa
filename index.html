@@ -70,15 +70,19 @@ let animationActive = false;
 document.getElementById('start-btn').addEventListener('click', async () => {
   document.getElementById('start-btn').style.display = 'none';
 
-  const mindarThree = new MindARThree({
-    container: document.getElementById('ar-container'),
-    imageTargetSrc: 'assets/targets.mind',
-    maxTrack: 1,
-    // Desligar toda a UI do MindAR
-    uiLoading: 'no',
-    uiScanning: 'no',
-    uiError: 'no',
-  });
+ const mindarThree = new MindARThree({
+  container: document.getElementById('ar-container'),
+  imageTargetSrc: 'assets/targets.mind',
+  maxTrack: 1,
+  uiLoading: 'no',
+  uiScanning: 'no',
+  uiError: 'no',
+  videoSettings: {
+    facingMode: 'environment',
+    width: { ideal: 1920 },
+    height: { ideal: 1080 }
+  }
+});
 
   const { renderer, scene, camera } = mindarThree;
 
