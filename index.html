@@ -1,17 +1,20 @@
-@@ -9,201 +9,307 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>AR Fita</title>
+
+  <script type="importmap">
   {
     "imports": {
       "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
       "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
     }
   }
   </script>
 
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; color: white; }
-    .mindar-ui-overlay, .mindar-ui-scanning, .mindar-ui-loading { display: none !important; }
     * {
       margin: 0;
       padding: 0;
@@ -40,7 +43,6 @@
     }
 
     #start-btn {
-      position: fixed; top: 50%; left: 50%;
       position: fixed;
       top: 50%;
       left: 50%;
@@ -48,10 +50,6 @@
       z-index: 20;
 
       padding: 1rem 2rem;
-      background: #c9a84c; color: #000;
-      border: none; font-size: 1rem;
-      cursor: pointer; border-radius: 4px;
-      z-index: 10;
       border: none;
       border-radius: 8px;
 
@@ -63,16 +61,10 @@
     }
 
     #status {
-      position: fixed; top: 20px; left: 50%;
       position: fixed;
       top: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0,0,0,0.6);
-      padding: 0.5rem 1.2rem; border-radius: 20px;
-      font-size: 0.8rem; z-index: 10;
-      text-align: center;
-      transition: opacity 0.5s;
 
       z-index: 20;
 
@@ -83,10 +75,8 @@
       font-size: 0.85rem;
 
       display: none;
-    }
       opacity: 1;
 
-    #ar-container { width: 100vw; height: 100vh; }
       transition: opacity 0.5s;
     }
   </style>
@@ -106,47 +96,10 @@ import * as THREE from 'three';
 import { MindARThree } from 'mindar-image-three';
 
 const status = document.getElementById('status');
-let experienceTriggered = false;
-
-// Variáveis para controlar a animação do foco verde
-let focusAnim = { active: false, startTime: 0 };
-let focusMesh;
-
-// Função para desenhar os cantos verdes no 3D
-function createFocusMesh() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
-  const ctx = canvas.getContext('2d');
-
-  ctx.strokeStyle = '#00ff00';
-  ctx.lineWidth = 20;
-  const l = 80; // Comprimento da linha de cada canto
-
-  // Canto Superior Esquerdo
-  ctx.beginPath(); ctx.moveTo(10, l); ctx.lineTo(10, 10); ctx.lineTo(l, 10); ctx.stroke();
-  // Canto Superior Direito
-  ctx.beginPath(); ctx.moveTo(512-10, l); ctx.lineTo(512-10, 10); ctx.lineTo(512-l, 10); ctx.stroke();
-  // Canto Inferior Esquerdo
-  ctx.beginPath(); ctx.moveTo(10, 512-l); ctx.lineTo(10, 512-10); ctx.lineTo(l, 512-10); ctx.stroke();
-  // Canto Inferior Direito
-  ctx.beginPath(); ctx.moveTo(512-10, 512-l); ctx.lineTo(512-10, 512-10); ctx.lineTo(512-l, 512-10); ctx.stroke();
-
-  const texture = new THREE.CanvasTexture(canvas);
-  const material = new THREE.MeshBasicMaterial({
-    map: texture,
-    transparent: true,
-    depthTest: false,
-    side: THREE.DoubleSide
-  });
 const startBtn = document.getElementById('start-btn');
 
 function showStatus(msg) {
 
-  // Criar um plano ligeiramente maior que a fita (1.2) para emoldurar a foto
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), material);
-  mesh.visible = false;
-  return mesh;
   status.style.display = 'block';
   status.style.opacity = '1';
   status.textContent = msg;
@@ -161,8 +114,6 @@ function showStatus(msg) {
   }, 2600);
 }
 
-document.getElementById('start-btn').addEventListener('click', async () => {
-  document.getElementById('start-btn').style.display = 'none';
 startBtn.addEventListener('click', async () => {
 
   startBtn.style.display = 'none';
@@ -171,7 +122,6 @@ startBtn.addEventListener('click', async () => {
   // VIDEO
   // -------------------------
 
-  // ── Vídeo HTML ──
   const video = document.createElement('video');
 
   video.src = 'assets/video.mp4';
@@ -218,7 +168,6 @@ startBtn.addEventListener('click', async () => {
 
   const anchor = mindarThree.addAnchor(0);
 
-  // ── Plano de vídeo ──
   // -------------------------
   // VIDEO MESH
   // -------------------------
@@ -232,27 +181,17 @@ startBtn.addEventListener('click', async () => {
   });
 
   const videoMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.6, 0.338),
-    new THREE.MeshBasicMaterial({ map: videoTexture, side: THREE.DoubleSide })
     videoGeometry,
     videoMaterial
   );
 
   // posição ao lado da imagem
   videoMesh.position.set(0.8, 0, 0);
-  videoMesh.visible = false;
 
-  // ── Adicionar o Foco Verde (diretamente no anchor para seguir a fita) ──
-  focusMesh = createFocusMesh();
-  focusMesh.position.set(0, 0, 0); // Fica exatamente no centro da imagem detectada
   videoMesh.visible = false;
 
   anchor.group.add(videoMesh);
-  anchor.group.add(focusMesh);
 
-  anchor.onTargetFound = () => {
-    if (experienceTriggered) return;
-    experienceTriggered = true;
   // -------------------------
   // CANTOS VERDES AR
   // -------------------------
@@ -317,15 +256,8 @@ startBtn.addEventListener('click', async () => {
 
     corners.visible = true;
 
-    // Ativar o vídeo
     videoMesh.visible = true;
-    video.play().catch(err => console.error('Erro vídeo:', err));
 
-    // Ativar a animação 3D dos cantos verdes
-    focusAnim.active = true;
-    focusAnim.startTime = Date.now();
-    focusMesh.visible = true;
-    focusMesh.material.opacity = 1;
     try {
       await video.play();
 
@@ -333,7 +265,6 @@ startBtn.addEventListener('click', async () => {
 
     } catch(err) {
 
-    showStatus('▶ A reproduzir');
       console.error(err);
 
       showStatus('Erro no vídeo');
@@ -363,43 +294,13 @@ startBtn.addEventListener('click', async () => {
 
     await mindarThree.start();
 
-    // Loop de Renderização / Animação
     renderer.setAnimationLoop(() => {
-
-      // Lógica de animação do quadrado verde
-      if (focusAnim.active) {
-        const elapsed = Date.now() - focusAnim.startTime;
-
-        if (elapsed < 300) {
-          // Fase 1: Encolhe (Focus "Snap") de 1.4 para 1.0
-          const progress = elapsed / 300;
-          const scale = 1.4 - (0.4 * progress);
-          focusMesh.scale.set(scale, scale, 1);
-          focusMesh.material.opacity = 1;
-        }
-        else if (elapsed < 1200) {
-          // Fase 2: Fica fixo durante 900ms
-          focusMesh.scale.set(1, 1, 1);
-          focusMesh.material.opacity = 1;
-        }
-        else if (elapsed < 1800) {
-          // Fase 3: Desvanece suavemente
-          const fadeProgress = (elapsed - 1200) / 600;
-          focusMesh.material.opacity = 1 - fadeProgress;
-        }
-        else {
-          // Fase 4: Oculta e desativa a animação
-          focusMesh.visible = false;
-          focusAnim.active = false;
-        }
-      }
 
       renderer.render(scene, camera);
 
     });
 
   } catch(err) {
-    showStatus('Erro: ' + err.message);
 
     console.error(err);
 
@@ -408,13 +309,6 @@ startBtn.addEventListener('click', async () => {
 
 });
 
-function showStatus(msg) {
-  status.style.display = 'block';
-  status.style.opacity = '1';
-  status.textContent = msg;
-  setTimeout(() => { status.style.opacity = '0'; }, 2000);
-  setTimeout(() => { status.style.display = 'none'; status.style.opacity = '1'; }, 2600);
-}
 </script>
 
 </body>
