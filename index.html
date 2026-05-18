@@ -9,201 +9,307 @@
   {
     "imports": {
       "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
       "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
     }
   }
   </script>
 
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; color: white; }
-    .mindar-ui-overlay, .mindar-ui-scanning, .mindar-ui-loading { display: none !important; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: black;
+      font-family: sans-serif;
+      color: white;
+    }
+
+    .mindar-ui-overlay,
+    .mindar-ui-scanning,
+    .mindar-ui-loading {
+      display: none !important;
+    }
+
+    #ar-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
 
     #start-btn {
-      position: fixed; top: 50%; left: 50%;
+      position: fixed;
+      top: 50%;
+      left: 50%;
       transform: translate(-50%, -50%);
+      z-index: 20;
+
       padding: 1rem 2rem;
-      background: #c9a84c; color: #000;
-      border: none; font-size: 1rem;
-      cursor: pointer; border-radius: 4px;
-      z-index: 10;
+      border: none;
+      border-radius: 8px;
+
+      background: #c9a84c;
+      color: black;
+
+      font-size: 1rem;
+      cursor: pointer;
     }
 
     #status {
-      position: fixed; top: 20px; left: 50%;
+      position: fixed;
+      top: 20px;
+      left: 50%;
       transform: translateX(-50%);
-      background: rgba(0,0,0,0.6);
-      padding: 0.5rem 1.2rem; border-radius: 20px;
-      font-size: 0.8rem; z-index: 10;
-      text-align: center;
-      transition: opacity 0.5s;
-      display: none;
-    }
 
-    #ar-container { width: 100vw; height: 100vh; }
+      z-index: 20;
+
+      background: rgba(0,0,0,0.7);
+      padding: 0.6rem 1.2rem;
+      border-radius: 999px;
+
+      font-size: 0.85rem;
+
+      display: none;
+      opacity: 1;
+
+      transition: opacity 0.5s;
+    }
   </style>
 </head>
+
 <body>
 
 <button id="start-btn">Iniciar AR</button>
+
 <div id="status"></div>
+
 <div id="ar-container"></div>
 
 <script type="module">
+
 import * as THREE from 'three';
 import { MindARThree } from 'mindar-image-three';
 
 const status = document.getElementById('status');
-let experienceTriggered = false;
+const startBtn = document.getElementById('start-btn');
 
-// Variáveis para controlar a animação do foco verde
-let focusAnim = { active: false, startTime: 0 };
-let focusMesh;
+function showStatus(msg) {
 
-// Função para desenhar os cantos verdes no 3D
-function createFocusMesh() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
-  const ctx = canvas.getContext('2d');
+  status.style.display = 'block';
+  status.style.opacity = '1';
+  status.textContent = msg;
 
-  ctx.strokeStyle = '#00ff00';
-  ctx.lineWidth = 20;
-  const l = 80; // Comprimento da linha de cada canto
+  setTimeout(() => {
+    status.style.opacity = '0';
+  }, 2000);
 
-  // Canto Superior Esquerdo
-  ctx.beginPath(); ctx.moveTo(10, l); ctx.lineTo(10, 10); ctx.lineTo(l, 10); ctx.stroke();
-  // Canto Superior Direito
-  ctx.beginPath(); ctx.moveTo(512-10, l); ctx.lineTo(512-10, 10); ctx.lineTo(512-l, 10); ctx.stroke();
-  // Canto Inferior Esquerdo
-  ctx.beginPath(); ctx.moveTo(10, 512-l); ctx.lineTo(10, 512-10); ctx.lineTo(l, 512-10); ctx.stroke();
-  // Canto Inferior Direito
-  ctx.beginPath(); ctx.moveTo(512-10, 512-l); ctx.lineTo(512-10, 512-10); ctx.lineTo(512-l, 512-10); ctx.stroke();
-
-  const texture = new THREE.CanvasTexture(canvas);
-  const material = new THREE.MeshBasicMaterial({
-    map: texture,
-    transparent: true,
-    depthTest: false,
-    side: THREE.DoubleSide
-  });
-
-  // Criar um plano ligeiramente maior que a fita (1.2) para emoldurar a foto
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), material);
-  mesh.visible = false;
-  return mesh;
+  setTimeout(() => {
+    status.style.display = 'none';
+    status.style.opacity = '1';
+  }, 2600);
 }
 
-document.getElementById('start-btn').addEventListener('click', async () => {
-  document.getElementById('start-btn').style.display = 'none';
+startBtn.addEventListener('click', async () => {
 
-  // ── Vídeo HTML ──
+  startBtn.style.display = 'none';
+
+  // -------------------------
+  // VIDEO
+  // -------------------------
+
   const video = document.createElement('video');
+
   video.src = 'assets/video.mp4';
   video.crossOrigin = 'anonymous';
+
   video.loop = true;
   video.muted = true;
   video.playsInline = true;
   video.preload = 'auto';
 
   const videoTexture = new THREE.VideoTexture(video);
+
   videoTexture.minFilter = THREE.LinearFilter;
   videoTexture.magFilter = THREE.LinearFilter;
+
+  // -------------------------
+  // MINDAR
+  // -------------------------
 
   const mindarThree = new MindARThree({
     container: document.getElementById('ar-container'),
     imageTargetSrc: 'assets/targets.mind',
+
     maxTrack: 1,
+
     uiLoading: 'no',
     uiScanning: 'no',
     uiError: 'no',
   });
 
   const { renderer, scene, camera } = mindarThree;
+
+  // -------------------------
+  // LUZ
+  // -------------------------
+
+  const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+
+  scene.add(light);
+
+  // -------------------------
+  // ANCHOR
+  // -------------------------
+
   const anchor = mindarThree.addAnchor(0);
 
-  // ── Plano de vídeo ──
+  // -------------------------
+  // VIDEO MESH
+  // -------------------------
+
+  const videoGeometry = new THREE.PlaneGeometry(0.6, 0.338);
+
+  const videoMaterial = new THREE.MeshBasicMaterial({
+    map: videoTexture,
+    transparent: true,
+    side: THREE.DoubleSide
+  });
+
   const videoMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.6, 0.338),
-    new THREE.MeshBasicMaterial({ map: videoTexture, side: THREE.DoubleSide })
+    videoGeometry,
+    videoMaterial
   );
+
+  // posição ao lado da imagem
   videoMesh.position.set(0.8, 0, 0);
+
   videoMesh.visible = false;
 
-  // ── Adicionar o Foco Verde (diretamente no anchor para seguir a fita) ──
-  focusMesh = createFocusMesh();
-  focusMesh.position.set(0, 0, 0); // Fica exatamente no centro da imagem detectada
-
   anchor.group.add(videoMesh);
-  anchor.group.add(focusMesh);
 
-  anchor.onTargetFound = () => {
-    if (experienceTriggered) return;
-    experienceTriggered = true;
+  // -------------------------
+  // CANTOS VERDES AR
+  // -------------------------
 
-    // Ativar o vídeo
-    videoMesh.visible = true;
-    video.play().catch(err => console.error('Erro vídeo:', err));
+  const createCorner = (x, y, rotation = 0) => {
 
-    // Ativar a animação 3D dos cantos verdes
-    focusAnim.active = true;
-    focusAnim.startTime = Date.now();
-    focusMesh.visible = true;
-    focusMesh.material.opacity = 1;
+    const group = new THREE.Group();
 
-    showStatus('▶ A reproduzir');
+    const material = new THREE.MeshBasicMaterial({
+      color: 0x00ff00,
+      side: THREE.DoubleSide
+    });
+
+    // linha horizontal
+    const horizontal = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.08, 0.01),
+      material
+    );
+
+    // linha vertical
+    const vertical = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.01, 0.08),
+      material
+    );
+
+    horizontal.position.set(0.035, 0, 0);
+    vertical.position.set(0, -0.035, 0);
+
+    group.add(horizontal);
+    group.add(vertical);
+
+    group.position.set(x, y, 0);
+
+    group.rotation.z = rotation;
+
+    return group;
   };
 
+  const corners = new THREE.Group();
+
+  // topo esquerdo
+  corners.add(createCorner(-0.32, 0.18, 0));
+
+  // topo direito
+  corners.add(createCorner(0.32, 0.18, Math.PI / 2));
+
+  // baixo esquerdo
+  corners.add(createCorner(-0.32, -0.18, -Math.PI / 2));
+
+  // baixo direito
+  corners.add(createCorner(0.32, -0.18, Math.PI));
+
+  corners.visible = false;
+
+  anchor.group.add(corners);
+
+  // -------------------------
+  // TARGET FOUND
+  // -------------------------
+
+  anchor.onTargetFound = async () => {
+
+    corners.visible = true;
+
+    videoMesh.visible = true;
+
+    try {
+      await video.play();
+
+      showStatus('▶ A reproduzir');
+
+    } catch(err) {
+
+      console.error(err);
+
+      showStatus('Erro no vídeo');
+    }
+  };
+
+  // -------------------------
+  // TARGET LOST
+  // -------------------------
+
+  anchor.onTargetLost = () => {
+
+    corners.visible = false;
+
+    videoMesh.visible = false;
+
+    video.pause();
+
+    showStatus('Tracking perdido');
+  };
+
+  // -------------------------
+  // START AR
+  // -------------------------
+
   try {
+
     await mindarThree.start();
 
-    // Loop de Renderização / Animação
     renderer.setAnimationLoop(() => {
 
-      // Lógica de animação do quadrado verde
-      if (focusAnim.active) {
-        const elapsed = Date.now() - focusAnim.startTime;
-
-        if (elapsed < 300) {
-          // Fase 1: Encolhe (Focus "Snap") de 1.4 para 1.0
-          const progress = elapsed / 300;
-          const scale = 1.4 - (0.4 * progress);
-          focusMesh.scale.set(scale, scale, 1);
-          focusMesh.material.opacity = 1;
-        }
-        else if (elapsed < 1200) {
-          // Fase 2: Fica fixo durante 900ms
-          focusMesh.scale.set(1, 1, 1);
-          focusMesh.material.opacity = 1;
-        }
-        else if (elapsed < 1800) {
-          // Fase 3: Desvanece suavemente
-          const fadeProgress = (elapsed - 1200) / 600;
-          focusMesh.material.opacity = 1 - fadeProgress;
-        }
-        else {
-          // Fase 4: Oculta e desativa a animação
-          focusMesh.visible = false;
-          focusAnim.active = false;
-        }
-      }
-
       renderer.render(scene, camera);
+
     });
+
   } catch(err) {
-    showStatus('Erro: ' + err.message);
+
     console.error(err);
+
+    showStatus('Erro: ' + err.message);
   }
+
 });
 
-function showStatus(msg) {
-  status.style.display = 'block';
-  status.style.opacity = '1';
-  status.textContent = msg;
-  setTimeout(() => { status.style.opacity = '0'; }, 2000);
-  setTimeout(() => { status.style.display = 'none'; status.style.opacity = '1'; }, 2600);
-}
 </script>
+
 </body>
 </html>
