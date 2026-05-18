@@ -162,6 +162,16 @@ startBtn.addEventListener('click', async () => {
 
   const { renderer, scene, camera } = mindarThree;
 
+  renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio, 2)
+    );
+
+renderer.outputColorSpace =
+  THREE.SRGBColorSpace;
+
+renderer.antialias = true;
+
+
   // -------------------------
   // LUZ
   // -------------------------
