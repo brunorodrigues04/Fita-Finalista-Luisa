@@ -6,9 +6,16 @@
   <title>Fita Finalista — Experiência AR</title>
 
       <!-- MindAR + Three.js -->
-    <script src="https://unpkg.com/mind-ar@1.2.2/dist/mindar-image-three.prod.js"></script>
-    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
-    <script src="https://unpkg.com/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
+      }
+    }
+    </script>
+
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/gsap@3.12.5/dist/gsap.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
 
@@ -548,7 +555,7 @@
 <div id="toast-container"></div>
 
 <!-- ══ MIND AR TARGET (substituir pelo teu .mind gerado) ══ -->
-<!-- 
+<!--
   Para gerar o ficheiro .mind:
   1. Vai a https://hiukim.github.io/mind-ar-js-doc/tools/compile
   2. Faz upload de uma foto da fita
@@ -557,6 +564,7 @@
 -->
 
 <script>
+    const { MindARThree } = window.MINDAR.IMAGE;
 // ══════════════════════════════════════════════
 //  CONFIGURAÇÃO — editar antes de fazer deploy
 // ══════════════════════════════════════════════
