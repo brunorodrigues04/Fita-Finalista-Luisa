@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>AR Fita</title>
+  <title>AR Persistente</title>
 
   <script type="importmap">
   {
@@ -15,69 +15,72 @@
   </script>
 
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
     }
 
-    body {
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-      background: black;
-      font-family: sans-serif;
-      color: white;
+    body{
+      width:100vw;
+      height:100vh;
+      overflow:hidden;
+      background:black;
+      font-family:sans-serif;
+      color:white;
+    }
+
+    #ar-container{
+      width:100vw;
+      height:100vh;
+      position:relative;
     }
 
     .mindar-ui-overlay,
     .mindar-ui-scanning,
-    .mindar-ui-loading {
-      display: none !important;
+    .mindar-ui-loading{
+      display:none !important;
     }
 
-    #ar-container {
-      width: 100vw;
-      height: 100vh;
-      position: relative;
+    #start-btn{
+      position:fixed;
+      top:50%;
+      left:50%;
+      transform:translate(-50%, -50%);
+
+      z-index:20;
+
+      padding:1rem 2rem;
+      border:none;
+      border-radius:8px;
+
+      background:#c9a84c;
+      color:black;
+
+      font-size:1rem;
+      cursor:pointer;
     }
 
-    #start-btn {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 20;
+    #status{
+      position:fixed;
+      top:20px;
+      left:50%;
+      transform:translateX(-50%);
 
-      padding: 1rem 2rem;
-      border: none;
-      border-radius: 8px;
+      z-index:20;
 
-      background: #c9a84c;
-      color: black;
+      background:rgba(0,0,0,0.7);
 
-      font-size: 1rem;
-      cursor: pointer;
-    }
+      padding:0.6rem 1.2rem;
 
-    #status {
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
+      border-radius:999px;
 
-      z-index: 20;
+      font-size:0.85rem;
 
-      background: rgba(0,0,0,0.7);
-      padding: 0.6rem 1.2rem;
-      border-radius: 999px;
+      display:none;
+      opacity:1;
 
-      font-size: 0.85rem;
-
-      display: none;
-      opacity: 1;
-
-      transition: opacity 0.5s;
+      transition:opacity .5s;
     }
   </style>
 </head>
@@ -95,36 +98,37 @@
 import * as THREE from 'three';
 import { MindARThree } from 'mindar-image-three';
 
-const status = document.getElementById('status');
 const startBtn = document.getElementById('start-btn');
+const status = document.getElementById('status');
 
-function showStatus(msg) {
+function showStatus(msg){
 
   status.style.display = 'block';
   status.style.opacity = '1';
   status.textContent = msg;
 
-  setTimeout(() => {
+  setTimeout(()=>{
     status.style.opacity = '0';
-  }, 2000);
+  },2000);
 
-  setTimeout(() => {
+  setTimeout(()=>{
     status.style.display = 'none';
     status.style.opacity = '1';
-  }, 2600);
+  },2600);
 }
 
-startBtn.addEventListener('click', async () => {
+startBtn.addEventListener('click', async ()=>{
 
   startBtn.style.display = 'none';
 
-  // -------------------------
+  // ------------------------------------------------
   // VIDEO
-  // -------------------------
+  // ------------------------------------------------
 
   const video = document.createElement('video');
 
   video.src = 'assets/video.mp4';
+
   video.crossOrigin = 'anonymous';
 
   video.loop = true;
@@ -136,13 +140,16 @@ startBtn.addEventListener('click', async () => {
 
   videoTexture.minFilter = THREE.LinearFilter;
   videoTexture.magFilter = THREE.LinearFilter;
+  videoTexture.generateMipmaps = false;
 
-  // -------------------------
+  // ------------------------------------------------
   // MINDAR
-  // -------------------------
+  // ------------------------------------------------
 
   const mindarThree = new MindARThree({
+
     container: document.getElementById('ar-container'),
+
     imageTargetSrc: 'assets/targets.mind',
 
     maxTrack: 1,
@@ -150,34 +157,66 @@ startBtn.addEventListener('click', async () => {
     uiLoading: 'no',
     uiScanning: 'no',
     uiError: 'no',
+
+    // MELHOR QUALIDADE CÂMARA
+    filterMinCF: 0.0001,
+    filterBeta: 0.001,
+
   });
 
   const { renderer, scene, camera } = mindarThree;
 
-  // -------------------------
+  // ------------------------------------------------
+  // MELHORAR RENDER
+  // ------------------------------------------------
+
+  renderer.setPixelRatio(window.devicePixelRatio);
+
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+  renderer.antialias = true;
+
+  // ------------------------------------------------
   // LUZ
-  // -------------------------
+  // ------------------------------------------------
 
-  const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+  const hemiLight = new THREE.HemisphereLight(
+    0xffffff,
+    0xbbbbff,
+    1
+  );
 
-  scene.add(light);
+  scene.add(hemiLight);
 
-  // -------------------------
+  // ------------------------------------------------
+  // GRUPO PERSISTENTE
+  // ------------------------------------------------
+
+  const persistentGroup = new THREE.Group();
+
+  scene.add(persistentGroup);
+
+  let locked = false;
+
+  // ------------------------------------------------
   // ANCHOR
-  // -------------------------
+  // ------------------------------------------------
 
   const anchor = mindarThree.addAnchor(0);
 
-  // -------------------------
+  // ------------------------------------------------
   // VIDEO MESH
-  // -------------------------
+  // ------------------------------------------------
 
-  const videoGeometry = new THREE.PlaneGeometry(0.6, 0.338);
+  const videoGeometry = new THREE.PlaneGeometry(
+    0.6,
+    0.338
+  );
 
   const videoMaterial = new THREE.MeshBasicMaterial({
     map: videoTexture,
-    transparent: true,
-    side: THREE.DoubleSide
+    transparent:true,
+    side:THREE.DoubleSide
   });
 
   const videoMesh = new THREE.Mesh(
@@ -185,45 +224,41 @@ startBtn.addEventListener('click', async () => {
     videoMaterial
   );
 
-  // posição ao lado da imagem
-  videoMesh.position.set(0.8, 0, 0);
+  videoMesh.position.set(0.8,0,0);
 
   videoMesh.visible = false;
 
-  anchor.group.add(videoMesh);
+  // ------------------------------------------------
+  // CANTOS VERDES
+  // ------------------------------------------------
 
-  // -------------------------
-  // CANTOS VERDES AR
-  // -------------------------
-
-  const createCorner = (x, y, rotation = 0) => {
+  const createCorner = (x,y,rotation=0)=>{
 
     const group = new THREE.Group();
 
     const material = new THREE.MeshBasicMaterial({
-      color: 0x00ff00,
-      side: THREE.DoubleSide
+      color:0x00ff00,
+      side:THREE.DoubleSide
     });
 
-    // linha horizontal
     const horizontal = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.08, 0.01),
+      new THREE.PlaneGeometry(0.08,0.01),
       material
     );
 
-    // linha vertical
     const vertical = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.01, 0.08),
+      new THREE.PlaneGeometry(0.01,0.08),
       material
     );
 
-    horizontal.position.set(0.035, 0, 0);
-    vertical.position.set(0, -0.035, 0);
+    horizontal.position.set(0.035,0,0);
+
+    vertical.position.set(0,-0.035,0);
 
     group.add(horizontal);
     group.add(vertical);
 
-    group.position.set(x, y, 0);
+    group.position.set(x,y,0);
 
     group.rotation.z = rotation;
 
@@ -232,75 +267,123 @@ startBtn.addEventListener('click', async () => {
 
   const corners = new THREE.Group();
 
-  // topo esquerdo
   corners.add(createCorner(-0.32, 0.18, 0));
-
-  // topo direito
-  corners.add(createCorner(0.32, 0.18, Math.PI / 2));
-
-  // baixo esquerdo
-  corners.add(createCorner(-0.32, -0.18, -Math.PI / 2));
-
-  // baixo direito
-  corners.add(createCorner(0.32, -0.18, Math.PI));
+  corners.add(createCorner(0.32, 0.18, Math.PI/2));
+  corners.add(createCorner(-0.32,-0.18,-Math.PI/2));
+  corners.add(createCorner(0.32,-0.18,Math.PI));
 
   corners.visible = false;
 
-  anchor.group.add(corners);
+  // ------------------------------------------------
+  // TRACKED GROUP
+  // ------------------------------------------------
 
-  // -------------------------
+  const trackedGroup = new THREE.Group();
+
+  trackedGroup.add(videoMesh);
+
+  trackedGroup.add(corners);
+
+  anchor.group.add(trackedGroup);
+
+  // ------------------------------------------------
   // TARGET FOUND
-  // -------------------------
+  // ------------------------------------------------
 
-  anchor.onTargetFound = async () => {
+  anchor.onTargetFound = async ()=>{
+
+    // impede repetir
+    if(locked) return;
+
+    locked = true;
+
+    showStatus('Imagem encontrada');
 
     corners.visible = true;
 
     videoMesh.visible = true;
 
-    try {
+    // atualizar matrizes
+    anchor.group.updateWorldMatrix(true,true);
+
+    // copiar posição
+    trackedGroup.getWorldPosition(
+      persistentGroup.position
+    );
+
+    // copiar rotação
+    trackedGroup.getWorldQuaternion(
+      persistentGroup.quaternion
+    );
+
+    // copiar escala
+    trackedGroup.getWorldScale(
+      persistentGroup.scale
+    );
+
+    // remover do tracking
+    anchor.group.remove(trackedGroup);
+
+    // adicionar à scene fixa
+    persistentGroup.add(videoMesh);
+
+    persistentGroup.add(corners);
+
+    // pequena animação
+    persistentGroup.scale.set(0.001,0.001,0.001);
+
+    let scale = 0.001;
+
+    const animateIn = ()=>{
+
+      scale += (1 - scale) * 0.08;
+
+      persistentGroup.scale.set(
+        scale,
+        scale,
+        scale
+      );
+
+      if(scale < 0.99){
+
+        requestAnimationFrame(animateIn);
+      }
+    };
+
+    animateIn();
+
+    // vídeo
+    try{
+
       await video.play();
 
-      showStatus('▶ A reproduzir');
+      showStatus('▶ AR fixado');
 
-    } catch(err) {
+    }catch(err){
 
       console.error(err);
 
-      showStatus('Erro no vídeo');
+      showStatus('Erro vídeo');
     }
   };
 
-  // -------------------------
-  // TARGET LOST
-  // -------------------------
+  // ------------------------------------------------
+  // START
+  // ------------------------------------------------
 
-  anchor.onTargetLost = () => {
-
-    corners.visible = false;
-
-    videoMesh.visible = false;
-
-    video.pause();
-
-    showStatus('Tracking perdido');
-  };
-
-  // -------------------------
-  // START AR
-  // -------------------------
-
-  try {
+  try{
 
     await mindarThree.start();
 
-    renderer.setAnimationLoop(() => {
+    showStatus('AR iniciado');
 
-      renderer.render(scene, camera);
+    renderer.setAnimationLoop(()=>{
+
+      renderer.render(scene,camera);
 
     });
 
-  } catch(err) {
+  }catch(err){
 
     console.error(err);
 
