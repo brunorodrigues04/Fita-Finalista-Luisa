@@ -3,64 +3,88 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>AR Persistente</title>
+  <title>AR Fita</title>
 
   <script type="importmap">
   {
     "imports": {
 
-      "three":
-        "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three":
+      "https://unpkg.com/three@0.160.0/build/three.module.js",
 
-      "three/addons/":
-        "https://unpkg.com/three@0.160.0/examples/jsm/",
+    "three/addons/":
+      "https://unpkg.com/three@0.160.0/examples/jsm/",
 
-      "mindar-image-three":
-        "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
-    }
+    "mindar-image-three":
+      "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+  }
   }
   </script>
 
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
-      width:100vw;
-      height:100vh;
-      overflow:hidden;
-      background:black;
-      font-family:sans-serif;
-      color:white;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: black;
+      font-family: sans-serif;
+      color: white;
+    }
+
+    .mindar-ui-overlay,
+    .mindar-ui-scanning,
+    .mindar-ui-loading {
+      display: none !important;
     }
 
     #ar-container {
-      width:100vw;
-      height:100vh;
+      width: 100vw;
+      height: 100vh;
+      position: relative;
     }
 
     #start-btn {
-      position:fixed;
-      top:50%;
-      left:50%;
-      transform:translate(-50%,-50%);
-      z-index:20;
-      padding:1rem 2rem;
-      background:#c9a84c;
-      border:none;
-      border-radius:8px;
-      cursor:pointer;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 20;
+
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 8px;
+
+      background: #c9a84c;
+      color: black;
+
+      font-size: 1rem;
+      cursor: pointer;
     }
 
     #status {
-      position:fixed;
-      top:20px;
-      left:50%;
-      transform:translateX(-50%);
-      background:rgba(0,0,0,0.7);
-      padding:0.6rem 1.2rem;
-      border-radius:999px;
-      display:none;
-      z-index:20;
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+
+      z-index: 20;
+
+      background: rgba(0,0,0,0.7);
+      padding: 0.6rem 1.2rem;
+      border-radius: 999px;
+
+      font-size: 0.85rem;
+
+      display: none;
+      opacity: 1;
+
+      transition: opacity 0.5s;
     }
   </style>
 </head>
@@ -68,7 +92,9 @@
 <body>
 
 <button id="start-btn">Iniciar AR</button>
+
 <div id="status"></div>
+
 <div id="ar-container"></div>
 
 <script type="module">
@@ -79,39 +105,55 @@ import { MindARThree } from 'mindar-image-three';
 const status = document.getElementById('status');
 const startBtn = document.getElementById('start-btn');
 
-function showStatus(msg){
+function showStatus(msg) {
+
   status.style.display = 'block';
+  status.style.opacity = '1';
   status.textContent = msg;
-  setTimeout(()=> status.style.display = 'none', 2000);
+
+  setTimeout(() => {
+    status.style.opacity = '0';
+  }, 2000);
+
+  setTimeout(() => {
+    status.style.display = 'none';
+    status.style.opacity = '1';
+  }, 2600);
 }
 
-startBtn.addEventListener('click', async ()=>{
+startBtn.addEventListener('click', async () => {
 
   startBtn.style.display = 'none';
 
-  // ---------------- VIDEO ----------------
+  // -------------------------
+  // VIDEO
+  // -------------------------
+
   const video = document.createElement('video');
 
   video.src = 'assets/video.mp4';
+  video.crossOrigin = 'anonymous';
+
   video.loop = true;
   video.muted = false;
-  video.volume = 1;
+  video.volume=1;
   video.playsInline = true;
+  video.preload = 'auto';
 
   const videoTexture = new THREE.VideoTexture(video);
 
-  // ---------------- MINDAR ----------------
-  const mindarThree = new MindARThree({
+  videoTexture.minFilter = THREE.LinearFilter;
+  videoTexture.magFilter = THREE.LinearFilter;
 
+  // -------------------------
+  // MINDAR
+  // -------------------------
+
+  const mindarThree = new MindARThree({
     container: document.getElementById('ar-container'),
     imageTargetSrc: 'assets/targets.mind',
-    maxTrack: 1,
 
-    // 🔥 MELHOR ESTABILIDADE
-    filterMinCF: 0.001,
-    filterBeta: 0.01,
-    warmupTolerance: 3,
-    missTolerance: 20,
+    maxTrack: 1,
 
     uiLoading: 'no',
     uiScanning: 'no',
@@ -120,128 +162,180 @@ startBtn.addEventListener('click', async ()=>{
 
   const { renderer, scene, camera } = mindarThree;
 
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  // -------------------------
+  // LUZ
+  // -------------------------
 
-  // ---------------- GRUPO FIXO ----------------
-  const persistentGroup = new THREE.Group();
-  scene.add(persistentGroup);
+  const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
 
-  let locked = false;
-  let stableFrames = 0;
+  scene.add(light);
 
-  // ---------------- ANCHOR ----------------
+  // -------------------------
+  // ANCHOR
+  // -------------------------
+
   const anchor = mindarThree.addAnchor(0);
 
-  // ---------------- VIDEO ----------------
+  // -------------------------
+  // VIDEO MESH
+  // -------------------------
+
+  const videoGeometry = new THREE.PlaneGeometry(0.6, 0.338);
+
+  const videoMaterial = new THREE.MeshBasicMaterial({
+    map: videoTexture,
+    transparent: true,
+    side: THREE.DoubleSide
+  });
+
   const videoMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.6, 0.338),
-    new THREE.MeshBasicMaterial({ map: videoTexture })
+    videoGeometry,
+    videoMaterial
   );
 
+  // posição ao lado da imagem
   videoMesh.position.set(0.8, 0, 0);
+
   videoMesh.visible = false;
 
-  // ---------------- CANTOS ----------------
-  const corners = new THREE.Group();
+  anchor.group.add(videoMesh);
 
-  const makeCorner = (x,y,r=0)=>{
-    const g = new THREE.Group();
-    const mat = new THREE.MeshBasicMaterial({ color:0x00ff00 });
+  // -------------------------
+  // CANTOS VERDES AR
+  // -------------------------
 
-    const h = new THREE.Mesh(new THREE.PlaneGeometry(0.08,0.01), mat);
-    const v = new THREE.Mesh(new THREE.PlaneGeometry(0.01,0.08), mat);
+  const createCorner = (x, y, rotation = 0) => {
 
-    h.position.set(0.035,0,0);
-    v.position.set(0,-0.035,0);
+    const group = new THREE.Group();
 
-    g.add(h); g.add(v);
-    g.position.set(x,y,0);
-    g.rotation.z = r;
+    const material = new THREE.MeshBasicMaterial({
+      color: 0x00ff00,
+      side: THREE.DoubleSide
+    });
 
-    return g;
+    // linha horizontal
+    const horizontal = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.08, 0.01),
+      material
+    );
+
+    // linha vertical
+    const vertical = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.01, 0.08),
+      material
+    );
+
+    horizontal.position.set(0.035, 0, 0);
+    vertical.position.set(0, -0.035, 0);
+
+    group.add(horizontal);
+    group.add(vertical);
+
+    group.position.set(x, y, 0);
+
+    group.rotation.z = rotation;
+
+    return group;
   };
 
-  corners.add(makeCorner(-0.32,0.18,0));
-  corners.add(makeCorner(0.32,0.18,Math.PI/2));
-  corners.add(makeCorner(-0.32,-0.18,-Math.PI/2));
-  corners.add(makeCorner(0.32,-0.18,Math.PI));
+  const corners = new THREE.Group();
+
+  // topo esquerdo
+  corners.add(createCorner(-0.32, 0.18, 0));
+
+  // topo direito
+  corners.add(createCorner(0.32, 0.18, Math.PI / 2));
+
+  // baixo esquerdo
+  corners.add(createCorner(-0.32, -0.18, -Math.PI / 2));
+
+  // baixo direito
+  corners.add(createCorner(0.32, -0.18, Math.PI));
 
   corners.visible = false;
 
-  // ---------------- TRACKED GROUP ----------------
-  const trackedGroup = new THREE.Group();
-  trackedGroup.add(videoMesh);
-  trackedGroup.add(corners);
-  anchor.group.add(trackedGroup);
+  anchor.group.add(corners);
 
-  // ---------------- FIXAÇÃO ESTÁVEL ----------------
-  anchor.onTargetFound = async ()=>{
+  // -------------------------
+  // TARGET FOUND
+  // -------------------------
 
-    stableFrames++;
-
-    if(stableFrames < 5) return;
-
-    if(locked) return;
-
-    locked = true;
-
-    showStatus("AR fixado");
+  anchor.onTargetFound = async () => {
 
     corners.visible = true;
+
     videoMesh.visible = true;
 
-    anchor.group.updateWorldMatrix(true,true);
-
-    trackedGroup.getWorldPosition(persistentGroup.position);
-    trackedGroup.getWorldQuaternion(persistentGroup.quaternion);
-    trackedGroup.getWorldScale(persistentGroup.scale);
-
-    anchor.group.remove(trackedGroup);
-
-    persistentGroup.add(videoMesh);
-    persistentGroup.add(corners);
-
-    persistentGroup.scale.set(0.001,0.001,0.001);
-
-    let s = 0.001;
-
-    const anim = ()=>{
-
-      s += (1 - s) * 0.1;
-
-      persistentGroup.scale.set(s,s,s);
-
-      if(s < 0.99) requestAnimationFrame(anim);
-    };
-
-    anim();
-
     try {
-      await video.play();
-    } catch(e){
-      document.body.addEventListener('click', ()=>video.play(), { once:true });
+      const playPromise = video.play();
+
+if (playPromise !== undefined) {
+
+  playPromise
+    .then(() => {
+
+      console.log('Vídeo com som');
+
+    })
+    .catch(err => {
+
+      console.error(err);
+
+      showStatus('Toque para ativar som');
+
+      // fallback
+      document.body.addEventListener('click', async () => {
+
+        await video.play();
+
+      }, { once: true });
+    });
+}
+
+      showStatus('▶ A reproduzir');
+
+    } catch(err) {
+
+      console.error(err);
+
+      showStatus('Erro no vídeo');
     }
   };
 
-  // ---------------- START ----------------
+  // -------------------------
+  // TARGET LOST
+  // -------------------------
+
+  anchor.onTargetLost = () => {
+
+    corners.visible = false;
+
+    videoMesh.visible = false;
+
+    video.pause();
+
+    showStatus('Tracking perdido');
+  };
+
+  // -------------------------
+  // START AR
+  // -------------------------
+
   try {
 
     await mindarThree.start();
 
-    renderer.setAnimationLoop(()=>{
+    renderer.setAnimationLoop(() => {
 
-      // 🔥 evita freeze visual
-      if(mindarThree.video.readyState >= 2){
-        renderer.render(scene,camera);
-      }
+      renderer.render(scene, camera);
 
     });
 
-    showStatus("AR iniciado");
+  } catch(err) {
 
-  } catch(err){
-    showStatus("Erro: " + err.message);
+    console.error(err);
+
+    showStatus('Erro: ' + err.message);
   }
 
 });
