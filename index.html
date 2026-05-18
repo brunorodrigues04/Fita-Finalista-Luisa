@@ -4,6 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>AR Fita</title>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+    }
+  }
+  </script>
+
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #000; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; color: white; }
@@ -27,7 +38,6 @@
       text-align: center;
     }
 
-    /* MindAR vai injetar o canvas e video aqui */
     #ar-container {
       width: 100vw;
       height: 100vh;
@@ -41,8 +51,8 @@
 <div id="ar-container"></div>
 
 <script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js';
-import { MindARThree } from 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.esm.js';
+import * as THREE from 'three';
+import { MindARThree } from 'mindar-image-three';
 
 const status = document.getElementById('status');
 
@@ -58,10 +68,11 @@ document.getElementById('start-btn').addEventListener('click', async () => {
 
   const { renderer, scene, camera } = mindarThree;
 
-  // Objeto simples para confirmar tracking — cubo dourado
-  const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-  const material = new THREE.MeshBasicMaterial({ color: 0xc9a84c });
-  const cube = new THREE.Mesh(geometry, material);
+  // Cubo dourado simples para confirmar tracking
+  const cube = new THREE.Mesh(
+    new THREE.BoxGeometry(0.1, 0.1, 0.1),
+    new THREE.MeshBasicMaterial({ color: 0xc9a84c })
+  );
 
   const anchor = mindarThree.addAnchor(0);
   anchor.group.add(cube);
