@@ -3,71 +3,92 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Câmara AR</title>
+  <title>AR Fita</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; width: 100vw; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; font-family: sans-serif; color: white; }
+    body { background: #000; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; color: white; }
 
-    video {
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-      display: none;
-    }
-
-    #btn {
+    #start-btn {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
       padding: 1rem 2rem;
-      background: #c9a84c;
-      color: #000;
-      border: none;
-      font-size: 1rem;
-      cursor: pointer;
-      border-radius: 4px;
+      background: #c9a84c; color: #000;
+      border: none; font-size: 1rem;
+      cursor: pointer; border-radius: 4px;
+      z-index: 10;
     }
 
-    #msg {
-      position: fixed;
-      top: 20px; left: 50%;
+    #status {
+      position: fixed; top: 20px; left: 50%;
       transform: translateX(-50%);
       background: rgba(0,0,0,0.7);
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
-      font-size: 0.85rem;
-      display: none;
+      padding: 0.5rem 1rem; border-radius: 4px;
+      font-size: 0.85rem; z-index: 10;
+      text-align: center;
+    }
+
+    /* MindAR vai injetar o canvas e video aqui */
+    #ar-container {
+      width: 100vw;
+      height: 100vh;
     }
   </style>
 </head>
 <body>
 
-<button id="btn">Abrir Câmara</button>
-<video id="video" autoplay playsinline></video>
-<div id="msg"></div>
+<button id="start-btn">Iniciar AR</button>
+<div id="status">A aguardar...</div>
+<div id="ar-container"></div>
 
-<script>
-  document.getElementById('btn').addEventListener('click', async () => {
-    const msg = document.getElementById('msg');
-    const video = document.getElementById('video');
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js';
+import { MindARThree } from 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.esm.js';
 
-    msg.style.display = 'block';
-    msg.textContent = 'A pedir acesso à câmara...';
+const status = document.getElementById('status');
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }, // câmara traseira
-        audio: false
-      });
+document.getElementById('start-btn').addEventListener('click', async () => {
+  document.getElementById('start-btn').style.display = 'none';
+  status.textContent = 'A carregar...';
 
-      video.srcObject = stream;
-      video.style.display = 'block';
-      document.getElementById('btn').style.display = 'none';
-      msg.textContent = '✓ Câmara activa';
-      setTimeout(() => { msg.style.display = 'none'; }, 2000);
-
-    } catch (err) {
-      msg.textContent = 'Erro: ' + err.message;
-      console.error(err);
-    }
+  const mindarThree = new MindARThree({
+    container: document.getElementById('ar-container'),
+    imageTargetSrc: 'assets/targets.mind',
+    maxTrack: 1,
   });
+
+  const { renderer, scene, camera } = mindarThree;
+
+  // Objeto simples para confirmar tracking — cubo dourado
+  const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+  const material = new THREE.MeshBasicMaterial({ color: 0xc9a84c });
+  const cube = new THREE.Mesh(geometry, material);
+
+  const anchor = mindarThree.addAnchor(0);
+  anchor.group.add(cube);
+
+  anchor.onTargetFound = () => {
+    status.textContent = '✓ Fita detectada!';
+    status.style.background = 'rgba(0,150,0,0.8)';
+  };
+
+  anchor.onTargetLost = () => {
+    status.textContent = 'Aponta para a fita...';
+    status.style.background = 'rgba(0,0,0,0.7)';
+  };
+
+  try {
+    await mindarThree.start();
+    status.textContent = 'Aponta para a fita...';
+
+    renderer.setAnimationLoop(() => {
+      renderer.render(scene, camera);
+    });
+
+  } catch(err) {
+    status.textContent = 'Erro: ' + err.message;
+    console.error(err);
+  }
+});
 </script>
 </body>
 </html>
