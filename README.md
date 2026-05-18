@@ -12,7 +12,7 @@ ar-finalista/
 │
 ├── assets/
 │   ├── targets.mind        ← ⚠️ GERAR COM MINDAR COMPILER
-│   ├── avatar.webm         ← Vídeo do avatar (Fundo transparente para Android/Chrome)
+│   ├── avatar.webm         ← Vídeo d   o avatar (Fundo transparente para Android/Chrome)
 │   ├── avatar.mov          ← Vídeo do avatar (Fundo transparente HEVC para iOS)
 │   ├── music.mp3           ← Música de fundo
 │   ├── voice.mp3           ← Voz do utilizador

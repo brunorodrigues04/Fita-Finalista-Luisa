@@ -18,10 +18,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #000; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; color: white; }
-
-    .mindar-ui-overlay,
-    .mindar-ui-scanning,
-    .mindar-ui-loading { display: none !important; }
+    .mindar-ui-overlay, .mindar-ui-scanning, .mindar-ui-loading { display: none !important; }
 
     #start-btn {
       position: fixed; top: 50%; left: 50%;
@@ -50,7 +47,7 @@
 <body>
 
 <button id="start-btn">Iniciar AR</button>
-<div id="status">Aponta para a fita...</div>
+<div id="status"></div>
 <div id="ar-container"></div>
 
 <script type="module">
@@ -59,21 +56,19 @@ import { MindARThree } from 'mindar-image-three';
 
 const status = document.getElementById('status');
 let experienceTriggered = false;
-let videoMesh = null;
 
 document.getElementById('start-btn').addEventListener('click', async () => {
   document.getElementById('start-btn').style.display = 'none';
 
-  // ── Preparar vídeo HTML (fora do Three.js) ──
+  // ── Vídeo HTML ──
   const video = document.createElement('video');
-  video.src = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+  video.src = 'assets/video.mp4'; // coloca o teu ficheiro aqui
   video.crossOrigin = 'anonymous';
   video.loop = true;
-  video.muted = true; // muted para autoplay funcionar no mobile
+  video.muted = true;      // necessário para autoplay no mobile
   video.playsInline = true;
   video.preload = 'auto';
 
-  // ── Three.js VideoTexture ──
   const videoTexture = new THREE.VideoTexture(video);
   videoTexture.minFilter = THREE.LinearFilter;
   videoTexture.magFilter = THREE.LinearFilter;
@@ -88,66 +83,55 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   });
 
   const { renderer, scene, camera } = mindarThree;
+  const anchor = mindarThree.addAnchor(0);
 
-  // Plano de vídeo — proporção 16:9
-  videoMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.6, 0.338),
+  // ── Plano de vídeo ancorado à fita ──
+  // No MindAR, 1 unidade ≈ largura da imagem target
+  // x: 0.8 = ~80% da largura da fita para a direita
+  // y: 0   = mesma altura da fita
+  // z: 0   = mesmo plano
+  const videoMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.6, 0.338), // proporção 16:9
     new THREE.MeshBasicMaterial({ map: videoTexture, side: THREE.DoubleSide })
   );
-  // Começa invisível
+
+  // Posição relativa à fita — ajusta o x para mais perto ou mais longe
+  videoMesh.position.set(0.8, 0, 0); // 0.8 unidades à direita da fita
   videoMesh.visible = false;
 
-  const anchor = mindarThree.addAnchor(0);
+  anchor.group.add(videoMesh);
 
   anchor.onTargetFound = () => {
     if (experienceTriggered) return;
     experienceTriggered = true;
 
-    // Obter posição mundial da fita
-    const worldPos = new THREE.Vector3();
-    anchor.group.getWorldPosition(worldPos);
-
-    // Colocar o vídeo no ar, acima da posição da fita
-    videoMesh.position.set(worldPos.x, worldPos.y + 0.3, worldPos.z);
-
-    // Orientar o vídeo para a câmara
-    videoMesh.lookAt(camera.position);
-
-    scene.add(videoMesh);
     videoMesh.visible = true;
+    video.play().catch(err => console.error('Erro vídeo:', err));
 
-    // Reproduzir vídeo
-    video.play().then(() => {
-      status.style.display = 'block';
-      status.textContent = '▶ Vídeo a reproduzir';
-      setTimeout(() => { status.style.opacity = '0'; }, 2000);
-      setTimeout(() => { status.style.display = 'none'; status.style.opacity = '1'; }, 2600);
-    }).catch(err => {
-      console.error('Erro ao reproduzir vídeo:', err);
-    });
+    showStatus('▶ A reproduzir');
   };
 
   anchor.onTargetLost = () => {
-    // Vídeo fica no ar — não para
+    // Vídeo continua — mas como está no anchor, desaparece com a fita
+    // Se quiseres que fique no ar mesmo assim, diz-me e mudamos
   };
 
   try {
     await mindarThree.start();
-
-    renderer.setAnimationLoop(() => {
-      // Vídeo sempre virado para a câmara
-      if (videoMesh && videoMesh.visible) {
-        videoMesh.lookAt(camera.position);
-      }
-      renderer.render(scene, camera);
-    });
-
+    renderer.setAnimationLoop(() => renderer.render(scene, camera));
   } catch(err) {
-    status.style.display = 'block';
-    status.textContent = 'Erro: ' + err.message;
+    showStatus('Erro: ' + err.message);
     console.error(err);
   }
 });
+
+function showStatus(msg) {
+  status.style.display = 'block';
+  status.style.opacity = '1';
+  status.textContent = msg;
+  setTimeout(() => { status.style.opacity = '0'; }, 2000);
+  setTimeout(() => { status.style.display = 'none'; status.style.opacity = '1'; }, 2600);
+}
 </script>
 </body>
 </html>
