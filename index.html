@@ -19,6 +19,11 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #000; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; color: white; }
 
+    /* Esconder TUDO que o MindAR injeta de UI */
+    .mindar-ui-overlay,
+    .mindar-ui-scanning,
+    .mindar-ui-loading { display: none !important; }
+
     #start-btn {
       position: fixed; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
@@ -32,22 +37,20 @@
     #status {
       position: fixed; top: 20px; left: 50%;
       transform: translateX(-50%);
-      background: rgba(0,0,0,0.7);
-      padding: 0.5rem 1rem; border-radius: 4px;
-      font-size: 0.85rem; z-index: 10;
+      background: rgba(0,0,0,0.6);
+      padding: 0.5rem 1.2rem; border-radius: 20px;
+      font-size: 0.8rem; z-index: 10;
       text-align: center;
+      transition: opacity 0.5s;
     }
 
-    #ar-container {
-      width: 100vw;
-      height: 100vh;
-    }
+    #ar-container { width: 100vw; height: 100vh; }
   </style>
 </head>
 <body>
 
 <button id="start-btn">Iniciar AR</button>
-<div id="status">A aguardar...</div>
+<div id="status">Aponta para a fita...</div>
 <div id="ar-container"></div>
 
 <script type="module">
@@ -55,47 +58,142 @@ import * as THREE from 'three';
 import { MindARThree } from 'mindar-image-three';
 
 const status = document.getElementById('status');
+status.style.display = 'none';
+
+// Controla se a experiência já foi ativada
+let experienceTriggered = false;
+
+// Objetos 3D que vão aparecer no espaço DEPOIS de detetar
+let floatingObjects = [];
+let animationActive = false;
 
 document.getElementById('start-btn').addEventListener('click', async () => {
   document.getElementById('start-btn').style.display = 'none';
-  status.textContent = 'A carregar...';
 
   const mindarThree = new MindARThree({
     container: document.getElementById('ar-container'),
     imageTargetSrc: 'assets/targets.mind',
     maxTrack: 1,
+    // Desligar toda a UI do MindAR
+    uiLoading: 'no',
+    uiScanning: 'no',
+    uiError: 'no',
   });
 
   const { renderer, scene, camera } = mindarThree;
 
-  // Cubo dourado simples para confirmar tracking
-  const cube = new THREE.Mesh(
-    new THREE.BoxGeometry(0.1, 0.1, 0.1),
-    new THREE.MeshBasicMaterial({ color: 0xc9a84c })
-  );
-
+  // ── Objetos ancorados À FITA (aparecem em cima da fita enquanto visível) ──
   const anchor = mindarThree.addAnchor(0);
-  anchor.group.add(cube);
 
+  // Plano indicador — anel dourado subtil em cima da fita
+  const ringGeo = new THREE.RingGeometry(0.08, 0.1, 32);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xc9a84c, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.visible = false; // escondido até detetar
+  anchor.group.add(ring);
+
+  // ── Objetos no ESPAÇO LIVRE (ficam no ar depois de detetar, independentes da fita) ──
+  // Estes são adicionados à scene diretamente, não ao anchor
+  // A posição é calculada quando a fita é detetada pela primeira vez
+
+  function createFloatingCube(position, color) {
+    const geo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(position);
+    mesh.userData.rotSpeed = (Math.random() - 0.5) * 0.04;
+    mesh.userData.floatOffset = Math.random() * Math.PI * 2;
+    scene.add(mesh);
+    floatingObjects.push(mesh);
+    return mesh;
+  }
+
+  function createFloatingText(text, position) {
+    const cv = document.createElement('canvas');
+    cv.width = 512; cv.height = 128;
+    const cx = cv.getContext('2d');
+    cx.clearRect(0, 0, 512, 128);
+    cx.font = 'bold 52px sans-serif';
+    cx.fillStyle = '#f0d080';
+    cx.textAlign = 'center';
+    cx.fillText(text, 256, 80);
+    const tex = new THREE.CanvasTexture(cv);
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.6, 0.15),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })
+    );
+    mesh.position.copy(position);
+    mesh.userData.floatOffset = Math.random() * Math.PI * 2;
+    scene.add(mesh);
+    floatingObjects.push(mesh);
+    return mesh;
+  }
+
+  // Chamado UMA VEZ quando a fita é detetada pela primeira vez
+  function triggerExperience(anchorWorldPosition) {
+    if (experienceTriggered) return;
+    experienceTriggered = true;
+    animationActive = true;
+
+    // Mostrar status brevemente
+    status.style.display = 'block';
+    status.textContent = '✦ Experiência iniciada';
+    setTimeout(() => { status.style.opacity = '0'; }, 2000);
+    setTimeout(() => { status.style.display = 'none'; status.style.opacity = '1'; }, 2600);
+
+    // Criar objetos flutuantes no espaço ao redor da posição da fita
+    // Estes ficam no ar MESMO depois de afastar o telemóvel da fita
+    const base = anchorWorldPosition.clone();
+
+    // Texto principal acima da fita
+    createFloatingText('✦ Finalista ✦', new THREE.Vector3(base.x, base.y + 0.4, base.z));
+
+    // Cubos coloridos ao redor
+    createFloatingCube(new THREE.Vector3(base.x - 0.3, base.y + 0.1, base.z), 0xc9a84c);
+    createFloatingCube(new THREE.Vector3(base.x + 0.3, base.y + 0.2, base.z), 0xf0d080);
+    createFloatingCube(new THREE.Vector3(base.x, base.y + 0.5, base.z - 0.1), 0xffffff);
+    createFloatingCube(new THREE.Vector3(base.x - 0.15, base.y + 0.35, base.z + 0.1), 0xc9a84c);
+  }
+
+  // ── Eventos do anchor ──
   anchor.onTargetFound = () => {
-    status.textContent = '✓ Fita detectada!';
-    status.style.background = 'rgba(0,150,0,0.8)';
+    ring.visible = true;
+
+    // Obter posição mundial do anchor quando detetado
+    const worldPos = new THREE.Vector3();
+    anchor.group.getWorldPosition(worldPos);
+
+    // Disparar experiência só uma vez
+    triggerExperience(worldPos);
   };
 
   anchor.onTargetLost = () => {
-    status.textContent = 'Aponta para a fita...';
-    status.style.background = 'rgba(0,0,0,0.7)';
+    ring.visible = false;
+    // NÃO parar a experiência — objetos ficam no ar
   };
 
   try {
     await mindarThree.start();
-    status.textContent = 'Aponta para a fita...';
 
     renderer.setAnimationLoop(() => {
+      const t = Date.now() * 0.001;
+
+      // Animar objetos flutuantes
+      if (animationActive) {
+        floatingObjects.forEach(obj => {
+          // Rotação suave
+          obj.rotation.y += obj.userData.rotSpeed || 0.01;
+          // Flutuação vertical
+          const offset = obj.userData.floatOffset || 0;
+          obj.position.y += Math.sin(t * 1.2 + offset) * 0.0008;
+        });
+      }
+
       renderer.render(scene, camera);
     });
 
   } catch(err) {
+    status.style.display = 'block';
     status.textContent = 'Erro: ' + err.message;
     console.error(err);
   }
