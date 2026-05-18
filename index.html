@@ -42,58 +42,12 @@
     }
 
     #ar-container { width: 100vw; height: 100vh; }
-
-    /* ── ESTILOS DOS CANTOS DE FOCO (HUD) ── */
-    #focus-corners {
-      position: fixed; top: 50%; left: 50%;
-      /* O scale inicial é ligeiramente menor para dar o efeito de foco */
-      transform: translate(-50%, -50%) scale(0.9);
-      width: 70vw; height: 50vh;
-      max-width: 350px; max-height: 450px;
-      z-index: 15; pointer-events: none;
-      opacity: 0; /* Invisível no início */
-      transition: all 0.3s ease-out;
-    }
-
-    /* Animação de entrada (Surge Verde) */
-    #focus-corners.show-green {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
-    }
-
-    /* Animação de saída (Desaparece) */
-    #focus-corners.fade-out {
-      opacity: 0;
-      transform: translate(-50%, -50%) scale(1.1);
-      transition: all 0.6s ease-out;
-    }
-
-    /* Formato de cada canto individual */
-    .corner {
-      position: absolute;
-      width: 40px; height: 40px;
-      border-color: #00ff00; /* Verde Foco */
-      border-style: solid;
-    }
-
-    .top-left { top: 0; left: 0; border-width: 4px 0 0 4px; border-top-left-radius: 4px; }
-    .top-right { top: 0; right: 0; border-width: 4px 4px 0 0; border-top-right-radius: 4px; }
-    .bottom-left { bottom: 0; left: 0; border-width: 0 0 4px 4px; border-bottom-left-radius: 4px; }
-    .bottom-right { bottom: 0; right: 0; border-width: 0 4px 4px 0; border-bottom-right-radius: 4px; }
   </style>
 </head>
 <body>
 
 <button id="start-btn">Iniciar AR</button>
 <div id="status"></div>
-
-<div id="focus-corners">
-  <div class="corner top-left"></div>
-  <div class="corner top-right"></div>
-  <div class="corner bottom-left"></div>
-  <div class="corner bottom-right"></div>
-</div>
-
 <div id="ar-container"></div>
 
 <script type="module">
@@ -101,8 +55,45 @@ import * as THREE from 'three';
 import { MindARThree } from 'mindar-image-three';
 
 const status = document.getElementById('status');
-const focusCorners = document.getElementById('focus-corners');
 let experienceTriggered = false;
+
+// Variáveis para controlar a animação do foco verde
+let focusAnim = { active: false, startTime: 0 };
+let focusMesh;
+
+// Função para desenhar os cantos verdes no 3D
+function createFocusMesh() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  ctx.strokeStyle = '#00ff00';
+  ctx.lineWidth = 20;
+  const l = 80; // Comprimento da linha de cada canto
+
+  // Canto Superior Esquerdo
+  ctx.beginPath(); ctx.moveTo(10, l); ctx.lineTo(10, 10); ctx.lineTo(l, 10); ctx.stroke();
+  // Canto Superior Direito
+  ctx.beginPath(); ctx.moveTo(512-10, l); ctx.lineTo(512-10, 10); ctx.lineTo(512-l, 10); ctx.stroke();
+  // Canto Inferior Esquerdo
+  ctx.beginPath(); ctx.moveTo(10, 512-l); ctx.lineTo(10, 512-10); ctx.lineTo(l, 512-10); ctx.stroke();
+  // Canto Inferior Direito
+  ctx.beginPath(); ctx.moveTo(512-10, 512-l); ctx.lineTo(512-10, 512-10); ctx.lineTo(512-l, 512-10); ctx.stroke();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false,
+    side: THREE.DoubleSide
+  });
+
+  // Criar um plano ligeiramente maior que a fita (1.2) para emoldurar a foto
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), material);
+  mesh.visible = false;
+  return mesh;
+}
 
 document.getElementById('start-btn').addEventListener('click', async () => {
   document.getElementById('start-btn').style.display = 'none';
@@ -132,42 +123,74 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   const { renderer, scene, camera } = mindarThree;
   const anchor = mindarThree.addAnchor(0);
 
-  // ── Plano de vídeo ancorado à fita ──
+  // ── Plano de vídeo ──
   const videoMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(0.6, 0.338),
     new THREE.MeshBasicMaterial({ map: videoTexture, side: THREE.DoubleSide })
   );
-
   videoMesh.position.set(0.8, 0, 0);
   videoMesh.visible = false;
 
+  // ── Adicionar o Foco Verde (diretamente no anchor para seguir a fita) ──
+  focusMesh = createFocusMesh();
+  focusMesh.position.set(0, 0, 0); // Fica exatamente no centro da imagem detectada
+
   anchor.group.add(videoMesh);
+  anchor.group.add(focusMesh);
 
   anchor.onTargetFound = () => {
     if (experienceTriggered) return;
     experienceTriggered = true;
 
-    // ── Ativar Cantos Verdes ──
-    focusCorners.classList.add('show-green');
-
-    // ── Ocultar os cantos após 1.2 segundos ──
-    setTimeout(() => {
-      focusCorners.classList.add('fade-out');
-    }, 1200);
-
+    // Ativar o vídeo
     videoMesh.visible = true;
     video.play().catch(err => console.error('Erro vídeo:', err));
+
+    // Ativar a animação 3D dos cantos verdes
+    focusAnim.active = true;
+    focusAnim.startTime = Date.now();
+    focusMesh.visible = true;
+    focusMesh.material.opacity = 1;
 
     showStatus('▶ A reproduzir');
   };
 
-  anchor.onTargetLost = () => {
-    // Código para quando a imagem sai do ecrã
-  };
-
   try {
     await mindarThree.start();
-    renderer.setAnimationLoop(() => renderer.render(scene, camera));
+
+    // Loop de Renderização / Animação
+    renderer.setAnimationLoop(() => {
+
+      // Lógica de animação do quadrado verde
+      if (focusAnim.active) {
+        const elapsed = Date.now() - focusAnim.startTime;
+
+        if (elapsed < 300) {
+          // Fase 1: Encolhe (Focus "Snap") de 1.4 para 1.0
+          const progress = elapsed / 300;
+          const scale = 1.4 - (0.4 * progress);
+          focusMesh.scale.set(scale, scale, 1);
+          focusMesh.material.opacity = 1;
+        }
+        else if (elapsed < 1200) {
+          // Fase 2: Fica fixo durante 900ms
+          focusMesh.scale.set(1, 1, 1);
+          focusMesh.material.opacity = 1;
+        }
+        else if (elapsed < 1800) {
+          // Fase 3: Desvanece suavemente
+          const fadeProgress = (elapsed - 1200) / 600;
+          focusMesh.material.opacity = 1 - fadeProgress;
+        }
+        else {
+          // Fase 4: Oculta e desativa a animação
+          focusMesh.visible = false;
+          focusAnim.active = false;
+        }
+      }
+
+      renderer.render(scene, camera);
+    });
   } catch(err) {
     showStatus('Erro: ' + err.message);
     console.error(err);
