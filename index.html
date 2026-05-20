@@ -143,15 +143,12 @@ function createPhotoArc(anchorGroup, photoUrls) {
   const loader  = new THREE.TextureLoader();
   const meshes  = [];
   const count   = photoUrls.length;
-  const aStart  = -Math.PI * 0.4;
-  const aEnd    =  Math.PI * 0.4;
 
   photoUrls.forEach((url, i) => {
-    const t     = count === 1 ? 0.5 : i / (count - 1);
-    const angle = aStart + t * (aEnd - aStart);
-    const x     = Math.sin(angle) * CONFIG.arcRadius;
-    const y     = 0.3;
-    const z     = -Math.cos(angle) * CONFIG.arcRadius;
+    const spacing = CONFIG.photoWidth + 0.08;
+    const x = (i - (count - 1) / 2) * spacing; // centrado
+    const y = 0.3;
+    const z = -CONFIG.arcRadius; // parede reta à frente
 
     const mesh = new THREE.Mesh(
       new THREE.PlaneGeometry(CONFIG.photoWidth, CONFIG.photoHeight),
@@ -164,7 +161,7 @@ function createPhotoArc(anchorGroup, photoUrls) {
     );
 
     mesh.position.set(x, y, z);
-    mesh.lookAt(new THREE.Vector3(0, y, 0));
+    // parede reta — todas viradas para a mesma direção (sem lookAt)
     mesh.userData.photoIndex = i;
     mesh.userData.isPhoto    = true;
 
