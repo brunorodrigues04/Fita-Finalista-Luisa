@@ -17,23 +17,15 @@
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      width: 100vw; height: 100vh;
-      overflow: hidden; background: black;
-      font-family: sans-serif; color: white;
-    }
-
+    body { width: 100vw; height: 100vh; overflow: hidden; background: black; font-family: sans-serif; color: white; }
     .mindar-ui-overlay, .mindar-ui-scanning, .mindar-ui-loading { display: none !important; }
-
     #ar-container { width: 100vw; height: 100vh; position: relative; }
 
     #start-btn {
       position: fixed; top: 50%; left: 50%;
       transform: translate(-50%, -50%); z-index: 20;
       padding: 1rem 2rem; border: none; border-radius: 8px;
-      background: #c9a84c; color: black;
-      font-size: 1rem; cursor: pointer;
+      background: #c9a84c; color: black; font-size: 1rem; cursor: pointer;
     }
 
     #status {
@@ -44,14 +36,12 @@
       display: none; opacity: 1; transition: opacity 0.5s;
     }
 
-    /* Botão fechar vídeo */
     #close-video-btn {
       position: fixed; top: 30px; right: 20px; z-index: 30;
       background: rgba(0,0,0,0.7); color: white;
       border: 1px solid rgba(255,255,255,0.3);
       border-radius: 999px; padding: 0.5rem 1rem;
-      font-size: 0.9rem; cursor: pointer;
-      display: none;
+      font-size: 0.9rem; cursor: pointer; display: none;
     }
   </style>
 </head>
@@ -66,20 +56,11 @@
 import * as THREE from 'three';
 import { MindARThree } from 'mindar-image-three';
 
-// ══════════════════════════════════════════
-//  CONFIGURAÇÃO — editar com os teus assets
-// ══════════════════════════════════════════
 const CONFIG = {
-  // Target 0 = frente da fita
-  // Targets 1-6 = fotos do verso
   totalTargets: 7,
-
-  // Vídeo da frente (toca automaticamente)
   frontVideo: 'assets/video0.mp4',
-
-  // Vídeos do verso — índice corresponde ao target (1 a 6)
   backVideos: [
-    null,                    // 0 = frente, não usado aqui
+    null,
     'assets/video1.mp4',
     'assets/video2.mp4',
     'assets/video3.mp4',
@@ -87,295 +68,227 @@ const CONFIG = {
     'assets/video5.mp4',
     'assets/video6.mp4',
   ],
-
-  // Fotos virtuais para cada target do verso
-  // 6 fotos por target
   virtualPhotos: [
-    null, // target 0 = frente
-    // target 1
-    ['assets/photos/target1/foto1.jpg','assets/photos/target1/foto2.jpg','assets/photos/target1/foto3.jpg',
-     'assets/photos/target1/foto4.jpg','assets/photos/target1/foto5.jpg','assets/photos/target1/foto6.jpg'],
-    // target 2
-    ['assets/photos/target2/foto1.jpg','assets/photos/target2/foto2.jpg','assets/photos/target2/foto3.jpg',
-     'assets/photos/target2/foto4.jpg','assets/photos/target2/foto5.jpg','assets/photos/target2/foto6.jpg'],
-    // target 3
-    ['assets/photos/target3/foto1.jpg','assets/photos/target3/foto2.jpg','assets/photos/target3/foto3.jpg',
-     'assets/photos/target3/foto4.jpg','assets/photos/target3/foto5.jpg','assets/photos/target3/foto6.jpg'],
-    // target 4
-    ['assets/photos/target4/foto1.jpg','assets/photos/target4/foto2.jpg','assets/photos/target4/foto3.jpg',
-     'assets/photos/target4/foto4.jpg','assets/photos/target4/foto5.jpg','assets/photos/target4/foto6.jpg'],
-    // target 5
-    ['assets/photos/target5/foto1.jpg','assets/photos/target5/foto2.jpg','assets/photos/target5/foto3.jpg',
-     'assets/photos/target5/foto4.jpg','assets/photos/target5/foto5.jpg','assets/photos/target5/foto6.jpg'],
-    // target 6
-    ['assets/photos/target6/foto1.jpg','assets/photos/target6/foto2.jpg','assets/photos/target6/foto3.jpg',
-     'assets/photos/target6/foto4.jpg','assets/photos/target6/foto5.jpg','assets/photos/target6/foto6.jpg'],
+    null,
+    ['assets/photos/target1/foto1.jpg','assets/photos/target1/foto2.jpg','assets/photos/target1/foto3.jpg','assets/photos/target1/foto4.jpg','assets/photos/target1/foto5.jpg','assets/photos/target1/foto6.jpg'],
+    ['assets/photos/target2/foto1.jpg','assets/photos/target2/foto2.jpg','assets/photos/target2/foto3.jpg','assets/photos/target2/foto4.jpg','assets/photos/target2/foto5.jpg','assets/photos/target2/foto6.jpg'],
+    ['assets/photos/target3/foto1.jpg','assets/photos/target3/foto2.jpg','assets/photos/target3/foto3.jpg','assets/photos/target3/foto4.jpg','assets/photos/target3/foto5.jpg','assets/photos/target3/foto6.jpg'],
+    ['assets/photos/target4/foto1.jpg','assets/photos/target4/foto2.jpg','assets/photos/target4/foto3.jpg','assets/photos/target4/foto4.jpg','assets/photos/target4/foto5.jpg','assets/photos/target4/foto6.jpg'],
+    ['assets/photos/target5/foto1.jpg','assets/photos/target5/foto2.jpg','assets/photos/target5/foto3.jpg','assets/photos/target5/foto4.jpg','assets/photos/target5/foto5.jpg','assets/photos/target5/foto6.jpg'],
+    ['assets/photos/target6/foto1.jpg','assets/photos/target6/foto2.jpg','assets/photos/target6/foto3.jpg','assets/photos/target6/foto4.jpg','assets/photos/target6/foto5.jpg','assets/photos/target6/foto6.jpg'],
   ],
-
-  // Tamanho das fotos virtuais no arco
   photoWidth: 0.35,
   photoHeight: 0.5,
-
-  // Raio do arco de fotos (em unidades MindAR)
   arcRadius: 1.2,
-
-  // Tamanho do vídeo (efeito pessoa de pé — alto e estreito)
   videoWidth: 0.5,
   videoHeight: 1.1,
 };
 
-// ══════════════════════════════════════════
-//  ESTADO
-// ══════════════════════════════════════════
-let activeVideoMesh = null;
-let activeVideo = null;
-let photoMeshes = []; // fotos virtuais atualmente visíveis
+// ── ESTADO GLOBAL ──
+let activeVideoMesh  = null;
+let activeVideo      = null;
+let activeAnchorGroup = null;
+let photoMeshes      = [];
 
-const status = document.getElementById('status');
-const closeBtn = document.getElementById('close-video-btn');
+const statusEl  = document.getElementById('status');
+const closeBtn  = document.getElementById('close-video-btn');
 
-function showStatus(msg, duration = 2000) {
-  status.style.display = 'block';
-  status.style.opacity = '1';
-  status.textContent = msg;
-  setTimeout(() => { status.style.opacity = '0'; }, duration);
-  setTimeout(() => { status.style.display = 'none'; status.style.opacity = '1'; }, duration + 600);
+function showStatus(msg) {
+  statusEl.style.display = 'block';
+  statusEl.style.opacity = '1';
+  statusEl.textContent = msg;
+  setTimeout(() => { statusEl.style.opacity = '0'; }, 2000);
+  setTimeout(() => { statusEl.style.display = 'none'; statusEl.style.opacity = '1'; }, 2600);
 }
 
-// ══════════════════════════════════════════
-//  CANTOS DE SCAN
-// ══════════════════════════════════════════
+// ── CANTOS ──
 function createCorners() {
-  const makeCorner = (x, y, rotation) => {
-    const group = new THREE.Group();
+  const makeCorner = (x, y, rot) => {
+    const g = new THREE.Group();
     const mat = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 1, side: THREE.DoubleSide });
     const h = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.01), mat.clone());
     const v = new THREE.Mesh(new THREE.PlaneGeometry(0.01, 0.08), mat.clone());
     h.position.set(0.035, 0, 0);
     v.position.set(0, -0.035, 0);
-    group.add(h, v);
-    group.position.set(x, y, 0.01);
-    group.rotation.z = rotation;
-    return group;
+    g.add(h, v);
+    g.position.set(x, y, 0.01);
+    g.rotation.z = rot;
+    return g;
   };
-
-  const corners = new THREE.Group();
-  corners.add(makeCorner(-0.32,  0.18, 0));
-  corners.add(makeCorner( 0.32,  0.18, Math.PI / 2));
-  corners.add(makeCorner(-0.32, -0.18, -Math.PI / 2));
-  corners.add(makeCorner( 0.32, -0.18, Math.PI));
-  corners.visible = false;
-  return corners;
+  const c = new THREE.Group();
+  c.add(makeCorner(-0.32,  0.18, 0));
+  c.add(makeCorner( 0.32,  0.18, Math.PI / 2));
+  c.add(makeCorner(-0.32, -0.18, -Math.PI / 2));
+  c.add(makeCorner( 0.32, -0.18, Math.PI));
+  c.visible = false;
+  return c;
 }
 
 function fadeOutCorners(corners, onDone) {
-  let opacity = 1;
-  const interval = setInterval(() => {
-    opacity -= 0.05;
-    corners.children.forEach(corner => {
-      corner.children.forEach(line => { line.material.opacity = Math.max(0, opacity); });
-    });
-    if (opacity <= 0) {
-      clearInterval(interval);
+  let op = 1;
+  const iv = setInterval(() => {
+    op -= 0.05;
+    corners.children.forEach(c => c.children.forEach(l => { l.material.opacity = Math.max(0, op); }));
+    if (op <= 0) {
+      clearInterval(iv);
       corners.visible = false;
-      corners.children.forEach(corner => {
-        corner.children.forEach(line => { line.material.opacity = 1; });
-      });
+      corners.children.forEach(c => c.children.forEach(l => { l.material.opacity = 1; }));
       if (onDone) onDone();
     }
   }, 30);
 }
 
-// ══════════════════════════════════════════
-//  FOTOS VIRTUAIS EM ARCO
-// ══════════════════════════════════════════
-function createPhotoArc(scene, camera, anchorGroup, photoUrls, onPhotoClick) {
-  const loader = new THREE.TextureLoader();
-  const meshes = [];
-  const count = photoUrls.length;
-
-  // Semicírculo à frente da fita
-  // Ângulo de -70° a +70° distribuído pelas fotos
-  const angleStart = -Math.PI * 0.4;
-  const angleEnd   =  Math.PI * 0.4;
+// ── FOTOS EM ARCO ──
+function createPhotoArc(anchorGroup, photoUrls) {
+  const loader  = new THREE.TextureLoader();
+  const meshes  = [];
+  const count   = photoUrls.length;
+  const aStart  = -Math.PI * 0.4;
+  const aEnd    =  Math.PI * 0.4;
 
   photoUrls.forEach((url, i) => {
-    const t = count === 1 ? 0.5 : i / (count - 1);
-    const angle = angleStart + t * (angleEnd - angleStart);
+    const t     = count === 1 ? 0.5 : i / (count - 1);
+    const angle = aStart + t * (aEnd - aStart);
+    const x     = Math.sin(angle) * CONFIG.arcRadius;
+    const y     = 0.3;
+    const z     = -Math.cos(angle) * CONFIG.arcRadius;
 
-    const x = Math.sin(angle) * CONFIG.arcRadius;
-    const y = 0.3; // ligeiramente acima da fita
-    const z = -Math.cos(angle) * CONFIG.arcRadius; // à frente
-
-    const texture = loader.load(url);
     const mesh = new THREE.Mesh(
       new THREE.PlaneGeometry(CONFIG.photoWidth, CONFIG.photoHeight),
-      new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 0, side: THREE.DoubleSide })
+      new THREE.MeshBasicMaterial({
+        map: loader.load(url),
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide
+      })
     );
 
     mesh.position.set(x, y, z);
-    // Virar para o centro (para a câmara ver de frente)
     mesh.lookAt(new THREE.Vector3(0, y, 0));
-
     mesh.userData.photoIndex = i;
-    mesh.userData.isPhoto = true;
+    mesh.userData.isPhoto    = true;
 
     anchorGroup.add(mesh);
     meshes.push(mesh);
 
-    // Fade in com delay escalonado
-    let opacity = 0;
-    const delay = i * 120;
+    // fade in escalonado
     setTimeout(() => {
-      const fadeIn = setInterval(() => {
-        opacity += 0.06;
-        mesh.material.opacity = Math.min(1, opacity);
-        if (opacity >= 1) clearInterval(fadeIn);
+      let op = 0;
+      const fi = setInterval(() => {
+        op += 0.06;
+        mesh.material.opacity = Math.min(1, op);
+        if (op >= 1) clearInterval(fi);
       }, 30);
-    }, delay);
+    }, i * 120);
   });
 
   return meshes;
 }
 
-function removePhotoArc(meshes, anchorGroup) {
-  meshes.forEach(mesh => {
-    let opacity = 1;
-    const interval = setInterval(() => {
-      opacity -= 0.06;
-      mesh.material.opacity = Math.max(0, opacity);
-      if (opacity <= 0) {
-        clearInterval(interval);
-        anchorGroup.remove(mesh);
-      }
-    }, 30);
-  });
-}
+// ── VÍDEO ──
+function openVideo(videoSrc, position, anchorGroup) {
+  // fechar anterior
+  if (activeVideoMesh) closeVideo();
 
-// ══════════════════════════════════════════
-//  VÍDEO NO ESPAÇO (efeito pessoa de pé)
-// ══════════════════════════════════════════
-function createVideoMesh(videoSrc, position, anchorGroup, onEnded) {
-  const video = document.createElement('video');
-  video.src = videoSrc;
-  video.crossOrigin = 'anonymous';
-  video.loop = false;
-  video.muted = false;
-  video.volume = 1;
-  video.playsInline = true;
-  video.preload = 'auto';
+  const vid = document.createElement('video');
+  vid.src         = videoSrc;
+  vid.crossOrigin = 'anonymous';
+  vid.loop        = false;
+  vid.muted       = false;
+  vid.volume      = 1;
+  vid.playsInline = true;
+  vid.preload     = 'auto';
+  vid.addEventListener('ended', closeVideo);
 
-  video.addEventListener('ended', () => {
-    if (onEnded) onEnded();
-  });
+  const tex = new THREE.VideoTexture(vid);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
 
-  const texture = new THREE.VideoTexture(video);
-  texture.minFilter = THREE.LinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-
-  // Proporção alta — efeito pessoa de pé
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(CONFIG.videoWidth, CONFIG.videoHeight),
-    new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 0, side: THREE.DoubleSide })
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, side: THREE.DoubleSide })
   );
 
-  // Posicionar em cima da foto tocada, ligeiramente acima
   mesh.position.set(position.x, position.y + 0.1, position.z);
   mesh.lookAt(new THREE.Vector3(0, position.y, 0));
-
   anchorGroup.add(mesh);
 
-  // Fade in
-  let opacity = 0;
-  const fadeIn = setInterval(() => {
-    opacity += 0.05;
-    mesh.material.opacity = Math.min(1, opacity);
-    if (opacity >= 1) clearInterval(fadeIn);
+  let op = 0;
+  const fi = setInterval(() => {
+    op += 0.05;
+    mesh.material.opacity = Math.min(1, op);
+    if (op >= 1) clearInterval(fi);
   }, 30);
 
-  video.play().catch(err => {
-    console.error('Erro vídeo:', err);
-    document.body.addEventListener('click', () => video.play(), { once: true });
+  vid.play().catch(err => {
+    console.warn('Autoplay bloqueado:', err);
+    showStatus('Toque para ativar som');
+    document.body.addEventListener('click', () => vid.play(), { once: true });
   });
 
-  return { mesh, video };
+  activeVideoMesh   = mesh;
+  activeVideo       = vid;
+  activeAnchorGroup = anchorGroup;
+  closeBtn.style.display = 'block';
 }
 
-function closeVideo(anchorGroup) {
+function closeVideo() {
   if (!activeVideoMesh) return;
-
   const mesh = activeVideoMesh;
   const vid  = activeVideo;
+  const ag   = activeAnchorGroup;
 
-  let opacity = 1;
-  const fadeOut = setInterval(() => {
-    opacity -= 0.06;
-    mesh.material.opacity = Math.max(0, opacity);
-    if (opacity <= 0) {
-      clearInterval(fadeOut);
+  activeVideoMesh   = null;
+  activeVideo       = null;
+  activeAnchorGroup = null;
+  closeBtn.style.display = 'none';
+
+  let op = 1;
+  const fo = setInterval(() => {
+    op -= 0.06;
+    mesh.material.opacity = Math.max(0, op);
+    if (op <= 0) {
+      clearInterval(fo);
       vid.pause();
       vid.src = '';
-      anchorGroup.remove(mesh);
+      ag.remove(mesh);
     }
   }, 30);
-
-  activeVideoMesh = null;
-  activeVideo = null;
-  closeBtn.style.display = 'none';
 }
 
-// ══════════════════════════════════════════
-//  RAYCASTING — detetar toque nas fotos
-// ══════════════════════════════════════════
-function setupRaycaster(camera, renderer, anchorGroup) {
+// ── RAYCASTER (único, configurado uma vez) ──
+function setupRaycaster(camera, renderer) {
   const raycaster = new THREE.Raycaster();
   const pointer   = new THREE.Vector2();
 
-  function onTouch(event) {
+  function onTouch(e) {
     if (photoMeshes.length === 0) return;
 
-    const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-    const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
 
-    pointer.x =  (clientX / window.innerWidth)  * 2 - 1;
-    pointer.y = -(clientY / window.innerHeight) * 2 + 1;
+    pointer.x =  (cx / window.innerWidth)  * 2 - 1;
+    pointer.y = -(cy / window.innerHeight) * 2 + 1;
 
     raycaster.setFromCamera(pointer, camera);
-    const intersects = raycaster.intersectObjects(photoMeshes);
+    const hits = raycaster.intersectObjects(photoMeshes);
 
-    if (intersects.length > 0) {
-      const hit = intersects[0].object;
-      if (hit.userData.isPhoto) {
-        const idx = hit.userData.photoIndex;
-        const pos = hit.position.clone();
+    if (hits.length > 0 && hits[0].object.userData.isPhoto) {
+      const hit       = hits[0].object;
+      const pos       = hit.position.clone();
+      const ag        = hit.parent; // anchorGroup
+      const targetIdx = ag.userData.targetIndex;
+      const videoSrc  = CONFIG.backVideos[targetIdx];
 
-        // Fechar vídeo anterior se existir
-        if (activeVideoMesh) closeVideo(anchorGroup);
-
-        // Abrir vídeo da foto tocada
-        // O vídeo é determinado pelo target ativo — guardado em anchorGroup.userData
-        const targetIdx = anchorGroup.userData.targetIndex;
-        const videoSrc  = CONFIG.backVideos[targetIdx];
-
-        const { mesh, video } = createVideoMesh(videoSrc, pos, anchorGroup, () => {
-          // Fecha automaticamente quando termina
-          closeVideo(anchorGroup);
-        });
-
-        activeVideoMesh = mesh;
-        activeVideo     = video;
-        closeBtn.style.display = 'block';
-      }
+      if (videoSrc) openVideo(videoSrc, pos, ag);
     }
   }
 
-  renderer.domElement.addEventListener('touchstart', onTouch);
+  renderer.domElement.addEventListener('touchstart', onTouch, { passive: true });
   renderer.domElement.addEventListener('click', onTouch);
 }
 
-// ══════════════════════════════════════════
-//  ARRANQUE
-// ══════════════════════════════════════════
+// ── ARRANQUE ──
 document.getElementById('start-btn').addEventListener('click', async () => {
   document.getElementById('start-btn').style.display = 'none';
 
@@ -385,7 +298,7 @@ document.getElementById('start-btn').addEventListener('click', async () => {
     maxTrack: 1,
     uiLoading: 'no',
     uiScanning: 'no',
-    uiError: 'no',
+    uiError:   'no',
     videoSettings: {
       facingMode: 'environment',
       width:  { ideal: 1920 },
@@ -396,55 +309,53 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   const { renderer, scene, camera } = mindarThree;
   scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
 
-  // Raycaster configurado uma vez
-  setupRaycaster(camera, renderer, null); // anchorGroup definido por target
+  // Raycaster único
+  setupRaycaster(camera, renderer);
 
-  // ── Criar todos os anchors ──
-  const anchors = [];
-  for (let i = 0; i < CONFIG.totalTargets; i++) {
-    anchors.push(mindarThree.addAnchor(i));
-  }
+  // Fechar vídeo
+  closeBtn.addEventListener('click', closeVideo);
 
-  // ══ TARGET 0 — FRENTE (automático) ══
-  const frontAnchor = anchors[0];
+  // ── Criar anchors ──
+  const anchors = Array.from({ length: CONFIG.totalTargets }, (_, i) => mindarThree.addAnchor(i));
+
+  // ══ TARGET 0 — FRENTE ══
+  const frontAnchor  = anchors[0];
   const frontCorners = createCorners();
   frontAnchor.group.add(frontCorners);
 
-  // Vídeo da frente — efeito pessoa de pé ao lado da fita
-  const frontVideo = document.createElement('video');
-  frontVideo.src = CONFIG.frontVideo;
-  frontVideo.crossOrigin = 'anonymous';
-  frontVideo.loop = true;
-  frontVideo.muted = false;
-  frontVideo.playsInline = true;
-  frontVideo.preload = 'auto';
+  const frontVid = document.createElement('video');
+  frontVid.src         = CONFIG.frontVideo;
+  frontVid.crossOrigin = 'anonymous';
+  frontVid.loop        = true;
+  frontVid.muted       = false;
+  frontVid.playsInline = true;
+  frontVid.preload     = 'auto';
 
-  const frontTexture = new THREE.VideoTexture(frontVideo);
-  frontTexture.minFilter = THREE.LinearFilter;
-  frontTexture.magFilter = THREE.LinearFilter;
+  const frontTex = new THREE.VideoTexture(frontVid);
+  frontTex.minFilter = THREE.LinearFilter;
+  frontTex.magFilter = THREE.LinearFilter;
 
-  const frontVideoMesh = new THREE.Mesh(
+  const frontMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(CONFIG.videoWidth, CONFIG.videoHeight),
-    new THREE.MeshBasicMaterial({ map: frontTexture, transparent: true, opacity: 0, side: THREE.DoubleSide })
+    new THREE.MeshBasicMaterial({ map: frontTex, transparent: true, opacity: 0, side: THREE.DoubleSide })
   );
-  // Ao lado direito da fita
-  frontVideoMesh.position.set(0.8, 0.1, 0);
-  frontVideoMesh.visible = false;
-  frontAnchor.group.add(frontVideoMesh);
+  frontMesh.position.set(0.8, 0.1, 0);
+  frontMesh.visible = false;
+  frontAnchor.group.add(frontMesh);
 
   frontAnchor.onTargetFound = () => {
     frontCorners.visible = true;
     setTimeout(() => {
       fadeOutCorners(frontCorners, () => {
-        // Mostrar vídeo com fade in
-        frontVideoMesh.visible = true;
+        frontMesh.visible = true;
         let op = 0;
         const fi = setInterval(() => {
-          op += 0.05; frontVideoMesh.material.opacity = Math.min(1, op);
+          op += 0.05;
+          frontMesh.material.opacity = Math.min(1, op);
           if (op >= 1) clearInterval(fi);
         }, 30);
-        frontVideo.play().catch(() => {
-          document.body.addEventListener('click', () => frontVideo.play(), { once: true });
+        frontVid.play().catch(() => {
+          document.body.addEventListener('click', () => frontVid.play(), { once: true });
         });
       });
     }, 1200);
@@ -452,20 +363,20 @@ document.getElementById('start-btn').addEventListener('click', async () => {
 
   frontAnchor.onTargetLost = () => {
     frontCorners.visible = false;
-    frontVideoMesh.visible = false;
-    frontVideo.pause();
+    frontMesh.visible    = false;
+    frontVid.pause();
   };
 
-  // ══ TARGETS 1-6 — VERSO (toque para ativar) ══
-  for (let i = 1; i <= 6; i++) {
-    const anchor  = anchors[i];
-    const corners = createCorners();
+  // ══ TARGETS 1-6 — VERSO ══
+  // Usar função imediata para evitar problema de closure com o loop
+  anchors.slice(1).forEach((anchor, idx) => {
+    const targetIndex = idx + 1; // 1 a 6
+    anchor.group.userData.targetIndex = targetIndex;
+
+    const corners     = createCorners();
     anchor.group.add(corners);
 
-    // Guardar índice no group para o raycaster saber qual vídeo usar
-    anchor.group.userData.targetIndex = i;
-
-    let photosShown = false;
+    let photosShown   = false;
     let currentPhotos = [];
 
     anchor.onTargetFound = () => {
@@ -474,17 +385,10 @@ document.getElementById('start-btn').addEventListener('click', async () => {
       setTimeout(() => {
         fadeOutCorners(corners, () => {
           if (!photosShown) {
-            photosShown = true;
-            // Mostrar fotos virtuais em arco
-            currentPhotos = createPhotoArc(
-              scene, camera, anchor.group,
-              CONFIG.virtualPhotos[i],
-              null // clique tratado pelo raycaster global
-            );
-            photoMeshes = currentPhotos;
-
-            // Atualizar raycaster com este anchorGroup
-            setupRaycaster(camera, renderer, anchor.group);
+            photosShown   = true;
+            currentPhotos = createPhotoArc(anchor.group, CONFIG.virtualPhotos[targetIndex]);
+            photoMeshes   = currentPhotos;
+            showStatus('Toca numa foto');
           }
         });
       }, 1200);
@@ -492,19 +396,8 @@ document.getElementById('start-btn').addEventListener('click', async () => {
 
     anchor.onTargetLost = () => {
       corners.visible = false;
-      // Fotos ficam no ar — não remove ao perder tracking
+      // fotos ficam no ar
     };
-  }
-
-  // Botão fechar vídeo
-  closeBtn.addEventListener('click', () => {
-    // Encontrar o anchorGroup ativo
-    for (let i = 1; i <= 6; i++) {
-      if (activeVideoMesh && anchors[i].group.children.includes(activeVideoMesh)) {
-        closeVideo(anchors[i].group);
-        break;
-      }
-    }
   });
 
   try {
