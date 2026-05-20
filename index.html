@@ -16,49 +16,111 @@
   </script>
 
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { width: 100vw; height: 100vh; overflow: hidden; background: black; font-family: sans-serif; color: white; }
-    .mindar-ui-overlay, .mindar-ui-scanning, .mindar-ui-loading { display: none !important; }
-    #ar-container { width: 100vw; height: 100vh; position: relative; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: black;
+      font-family: sans-serif;
+      color: white;
+    }
+
+    .mindar-ui-overlay,
+    .mindar-ui-scanning,
+    .mindar-ui-loading {
+      display: none !important;
+    }
+
+    #ar-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
 
     #start-btn {
-      position: fixed; top: 50%; left: 50%;
-      transform: translate(-50%, -50%); z-index: 20;
-      padding: 1rem 2rem; border: none; border-radius: 8px;
-      background: #c9a84c; color: black; font-size: 1rem; cursor: pointer;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 20;
+
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 10px;
+
+      background: #c9a84c;
+      color: black;
+      font-size: 1rem;
+      cursor: pointer;
     }
 
     #status {
-      position: fixed; top: 20px; left: 50%;
-      transform: translateX(-50%); z-index: 20;
-      background: rgba(0,0,0,0.7); padding: 0.6rem 1.2rem;
-      border-radius: 999px; font-size: 0.85rem;
-      display: none; opacity: 1; transition: opacity 0.5s;
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+
+      background: rgba(0,0,0,0.7);
+      padding: 0.6rem 1.2rem;
+      border-radius: 999px;
+
+      font-size: 0.85rem;
+
+      display: none;
+      opacity: 1;
+
+      transition: opacity 0.5s;
     }
 
     #close-video-btn {
-      position: fixed; top: 30px; right: 20px; z-index: 30;
-      background: rgba(0,0,0,0.7); color: white;
-      border: 1px solid rgba(255,255,255,0.3);
-      border-radius: 999px; padding: 0.5rem 1rem;
-      font-size: 0.9rem; cursor: pointer; display: none;
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 50;
+
+      background: rgba(0,0,0,0.7);
+      color: white;
+
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 999px;
+
+      padding: 0.6rem 1rem;
+      cursor: pointer;
+
+      display: none;
     }
   </style>
 </head>
 <body>
 
 <button id="start-btn">Iniciar AR</button>
+
 <div id="status"></div>
-<button id="close-video-btn">✕ Fechar</button>
+
+<button id="close-video-btn">
+  ✕ Fechar
+</button>
+
 <div id="ar-container"></div>
 
 <script type="module">
+
 import * as THREE from 'three';
 import { MindARThree } from 'mindar-image-three';
 
 const CONFIG = {
+
   totalTargets: 7,
+
   frontVideo: 'assets/video0.mp4',
+
   backVideos: [
     null,
     'assets/video1.mp4',
@@ -68,343 +130,608 @@ const CONFIG = {
     'assets/video5.mp4',
     'assets/video6.mp4',
   ],
+
   virtualPhotos: [
+
     null,
-    ['assets/photos/target1/foto1.jpg','assets/photos/target1/foto2.jpg','assets/photos/target1/foto3.jpg','assets/photos/target1/foto4.jpg','assets/photos/target1/foto5.jpg','assets/photos/target1/foto6.jpg'],
-    ['assets/photos/target2/foto1.jpg','assets/photos/target2/foto2.jpg','assets/photos/target2/foto3.jpg','assets/photos/target2/foto4.jpg','assets/photos/target2/foto5.jpg','assets/photos/target2/foto6.jpg'],
-    ['assets/photos/target3/foto1.jpg','assets/photos/target3/foto2.jpg','assets/photos/target3/foto3.jpg','assets/photos/target3/foto4.jpg','assets/photos/target3/foto5.jpg','assets/photos/target3/foto6.jpg'],
-    ['assets/photos/target4/foto1.jpg','assets/photos/target4/foto2.jpg','assets/photos/target4/foto3.jpg','assets/photos/target4/foto4.jpg','assets/photos/target4/foto5.jpg','assets/photos/target4/foto6.jpg'],
-    ['assets/photos/target5/foto1.jpg','assets/photos/target5/foto2.jpg','assets/photos/target5/foto3.jpg','assets/photos/target5/foto4.jpg','assets/photos/target5/foto5.jpg','assets/photos/target5/foto6.jpg'],
-    ['assets/photos/target6/foto1.jpg','assets/photos/target6/foto2.jpg','assets/photos/target6/foto3.jpg','assets/photos/target6/foto4.jpg','assets/photos/target6/foto5.jpg','assets/photos/target6/foto6.jpg'],
+
+    [
+      'assets/photos/target1/foto1.jpg',
+      'assets/photos/target1/foto2.jpg',
+      'assets/photos/target1/foto3.jpg',
+      'assets/photos/target1/foto4.jpg',
+      'assets/photos/target1/foto5.jpg',
+      'assets/photos/target1/foto6.jpg'
+    ],
+
+    [
+      'assets/photos/target2/foto1.jpg',
+      'assets/photos/target2/foto2.jpg',
+      'assets/photos/target2/foto3.jpg',
+      'assets/photos/target2/foto4.jpg',
+      'assets/photos/target2/foto5.jpg',
+      'assets/photos/target2/foto6.jpg'
+    ],
+
+    [
+      'assets/photos/target3/foto1.jpg',
+      'assets/photos/target3/foto2.jpg',
+      'assets/photos/target3/foto3.jpg',
+      'assets/photos/target3/foto4.jpg',
+      'assets/photos/target3/foto5.jpg',
+      'assets/photos/target3/foto6.jpg'
+    ],
+
+    [
+      'assets/photos/target4/foto1.jpg',
+      'assets/photos/target4/foto2.jpg',
+      'assets/photos/target4/foto3.jpg',
+      'assets/photos/target4/foto4.jpg',
+      'assets/photos/target4/foto5.jpg',
+      'assets/photos/target4/foto6.jpg'
+    ],
+
+    [
+      'assets/photos/target5/foto1.jpg',
+      'assets/photos/target5/foto2.jpg',
+      'assets/photos/target5/foto3.jpg',
+      'assets/photos/target5/foto4.jpg',
+      'assets/photos/target5/foto5.jpg',
+      'assets/photos/target5/foto6.jpg'
+    ],
+
+    [
+      'assets/photos/target6/foto1.jpg',
+      'assets/photos/target6/foto2.jpg',
+      'assets/photos/target6/foto3.jpg',
+      'assets/photos/target6/foto4.jpg',
+      'assets/photos/target6/foto5.jpg',
+      'assets/photos/target6/foto6.jpg'
+    ]
   ],
+
   photoWidth: 0.35,
   photoHeight: 0.5,
-  arcRadius: 1.2,
+
   videoWidth: 0.5,
   videoHeight: 1.1,
 };
 
-// ── ESTADO GLOBAL ──
-let activeVideoMesh  = null;
-let activeVideo      = null;
+let activeVideoMesh = null;
+let activeVideo = null;
 let activeAnchorGroup = null;
-let photoMeshes      = [];
 
-const statusEl  = document.getElementById('status');
-const closeBtn  = document.getElementById('close-video-btn');
+let photoMeshes = [];
+
+const statusEl = document.getElementById('status');
+const closeBtn = document.getElementById('close-video-btn');
 
 function showStatus(msg) {
+
   statusEl.style.display = 'block';
   statusEl.style.opacity = '1';
   statusEl.textContent = msg;
-  setTimeout(() => { statusEl.style.opacity = '0'; }, 2000);
-  setTimeout(() => { statusEl.style.display = 'none'; statusEl.style.opacity = '1'; }, 2600);
+
+  setTimeout(() => {
+    statusEl.style.opacity = '0';
+  }, 2000);
+
+  setTimeout(() => {
+    statusEl.style.display = 'none';
+    statusEl.style.opacity = '1';
+  }, 2600);
 }
 
-// ── CANTOS ──
 function createCorners() {
+
   const makeCorner = (x, y, rot) => {
+
     const g = new THREE.Group();
-    const mat = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 1, side: THREE.DoubleSide });
-    const h = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.01), mat.clone());
-    const v = new THREE.Mesh(new THREE.PlaneGeometry(0.01, 0.08), mat.clone());
+
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0x00ff00,
+      transparent: true,
+      opacity: 1,
+      side: THREE.DoubleSide
+    });
+
+    const h = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.08, 0.01),
+      mat.clone()
+    );
+
+    const v = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.01, 0.08),
+      mat.clone()
+    );
+
     h.position.set(0.035, 0, 0);
     v.position.set(0, -0.035, 0);
+
     g.add(h, v);
+
     g.position.set(x, y, 0.01);
     g.rotation.z = rot;
+
     return g;
   };
+
   const c = new THREE.Group();
-  c.add(makeCorner(-0.32,  0.18, 0));
-  c.add(makeCorner( 0.32,  0.18, Math.PI / 2));
+
+  c.add(makeCorner(-0.32, 0.18, 0));
+  c.add(makeCorner(0.32, 0.18, Math.PI / 2));
   c.add(makeCorner(-0.32, -0.18, -Math.PI / 2));
-  c.add(makeCorner( 0.32, -0.18, Math.PI));
+  c.add(makeCorner(0.32, -0.18, Math.PI));
+
   c.visible = false;
+
   return c;
 }
 
 function fadeOutCorners(corners, onDone) {
-  let op = 1;
+
+  let opacity = 1;
+
   const iv = setInterval(() => {
-    op -= 0.05;
-    corners.children.forEach(c => c.children.forEach(l => { l.material.opacity = Math.max(0, op); }));
-    if (op <= 0) {
+
+    opacity -= 0.05;
+
+    corners.children.forEach(c => {
+      c.children.forEach(line => {
+        line.material.opacity = Math.max(0, opacity);
+      });
+    });
+
+    if (opacity <= 0) {
+
       clearInterval(iv);
+
       corners.visible = false;
-      corners.children.forEach(c => c.children.forEach(l => { l.material.opacity = 1; }));
+
+      corners.children.forEach(c => {
+        c.children.forEach(line => {
+          line.material.opacity = 1;
+        });
+      });
+
       if (onDone) onDone();
     }
+
   }, 30);
 }
 
-// ── FOTOS EM ARCO ──
-function createPhotoArc(anchorGroup, photoUrls) {
-  const loader  = new THREE.TextureLoader();
-  const meshes  = [];
-  const count   = photoUrls.length;
+function createPhotoWall(anchorGroup, photoUrls) {
+
+  const loader = new THREE.TextureLoader();
+
+  const meshes = [];
+
+  const count = photoUrls.length;
+
+  const spacing = 0.42;
 
   photoUrls.forEach((url, i) => {
-    const spacing = CONFIG.photoWidth + 0.08;
-    const x = (i - (count - 1) / 2) * spacing; // centrado
-    const y = 0.3;
-    const z = -CONFIG.arcRadius; // parede reta à frente
 
-    const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(CONFIG.photoWidth, CONFIG.photoHeight),
-      new THREE.MeshBasicMaterial({
-        map: loader.load(url),
-        transparent: true,
-        opacity: 0,
-        side: THREE.DoubleSide
-      })
+    const x = (i - (count - 1) / 2) * spacing;
+
+    const y = 0.25;
+
+    const z = -1.4;
+
+    const texture = loader.load(url);
+
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      opacity: 0,
+      side: THREE.DoubleSide
+    });
+
+    const geometry = new THREE.PlaneGeometry(
+      CONFIG.photoWidth,
+      CONFIG.photoHeight
     );
 
+    const mesh = new THREE.Mesh(geometry, material);
+
     mesh.position.set(x, y, z);
-    // parede reta — todas viradas para a mesma direção (sem lookAt)
+
+    // TODAS DIREITAS
+    mesh.rotation.y = 0;
+
     mesh.userData.photoIndex = i;
-    mesh.userData.isPhoto    = true;
+    mesh.userData.isPhoto = true;
 
     anchorGroup.add(mesh);
+
     meshes.push(mesh);
 
-    // fade in escalonado
     setTimeout(() => {
-      let op = 0;
-      const fi = setInterval(() => {
-        op += 0.06;
-        mesh.material.opacity = Math.min(1, op);
-        if (op >= 1) clearInterval(fi);
+
+      let opacity = 0;
+
+      const fade = setInterval(() => {
+
+        opacity += 0.05;
+
+        mesh.material.opacity = Math.min(opacity, 1);
+
+        if (opacity >= 1) {
+          clearInterval(fade);
+        }
+
       }, 30);
-    }, i * 120);
+
+    }, i * 100);
+
   });
 
   return meshes;
 }
 
-// ── VÍDEO ──
 function openVideo(videoSrc, position, anchorGroup) {
-  // fechar anterior
-  if (activeVideoMesh) closeVideo();
+
+  if (activeVideoMesh) {
+    closeVideo();
+  }
 
   const vid = document.createElement('video');
-  vid.src         = videoSrc;
+
+  vid.src = videoSrc;
   vid.crossOrigin = 'anonymous';
-  vid.loop        = false;
-  vid.muted       = false;
-  vid.volume      = 1;
+  vid.loop = false;
+  vid.muted = false;
+  vid.volume = 1;
   vid.playsInline = true;
-  vid.preload     = 'auto';
+  vid.preload = 'auto';
+
   vid.addEventListener('ended', closeVideo);
 
   const tex = new THREE.VideoTexture(vid);
+
   tex.minFilter = THREE.LinearFilter;
   tex.magFilter = THREE.LinearFilter;
 
   const mesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(CONFIG.videoWidth, CONFIG.videoHeight),
-    new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, side: THREE.DoubleSide })
+
+    new THREE.PlaneGeometry(
+      CONFIG.videoWidth,
+      CONFIG.videoHeight
+    ),
+
+    new THREE.MeshBasicMaterial({
+      map: tex,
+      transparent: true,
+      opacity: 0,
+      side: THREE.DoubleSide
+    })
   );
 
-  mesh.position.set(position.x, position.y + 0.1, position.z);
-  mesh.lookAt(new THREE.Vector3(0, position.y, 0));
+  mesh.position.set(
+    position.x,
+    position.y + 0.1,
+    position.z + 0.01
+  );
+
   anchorGroup.add(mesh);
 
-  let op = 0;
-  const fi = setInterval(() => {
-    op += 0.05;
-    mesh.material.opacity = Math.min(1, op);
-    if (op >= 1) clearInterval(fi);
+  let opacity = 0;
+
+  const fade = setInterval(() => {
+
+    opacity += 0.05;
+
+    mesh.material.opacity = Math.min(opacity, 1);
+
+    if (opacity >= 1) {
+      clearInterval(fade);
+    }
+
   }, 30);
 
-  vid.play().catch(err => {
-    console.warn('Autoplay bloqueado:', err);
+  vid.play().catch(() => {
+
     showStatus('Toque para ativar som');
-    document.body.addEventListener('click', () => vid.play(), { once: true });
+
+    document.body.addEventListener('click', () => {
+      vid.play();
+    }, { once: true });
+
   });
 
-  activeVideoMesh   = mesh;
-  activeVideo       = vid;
+  activeVideoMesh = mesh;
+  activeVideo = vid;
   activeAnchorGroup = anchorGroup;
+
   closeBtn.style.display = 'block';
 }
 
 function closeVideo() {
-  if (!activeVideoMesh) return;
-  const mesh = activeVideoMesh;
-  const vid  = activeVideo;
-  const ag   = activeAnchorGroup;
 
-  activeVideoMesh   = null;
-  activeVideo       = null;
+  if (!activeVideoMesh) return;
+
+  const mesh = activeVideoMesh;
+  const vid = activeVideo;
+  const ag = activeAnchorGroup;
+
+  activeVideoMesh = null;
+  activeVideo = null;
   activeAnchorGroup = null;
+
   closeBtn.style.display = 'none';
 
-  let op = 1;
-  const fo = setInterval(() => {
-    op -= 0.06;
-    mesh.material.opacity = Math.max(0, op);
-    if (op <= 0) {
-      clearInterval(fo);
+  let opacity = 1;
+
+  const fade = setInterval(() => {
+
+    opacity -= 0.06;
+
+    mesh.material.opacity = Math.max(0, opacity);
+
+    if (opacity <= 0) {
+
+      clearInterval(fade);
+
       vid.pause();
       vid.src = '';
+
       ag.remove(mesh);
     }
+
   }, 30);
 }
 
-// ── RAYCASTER (único, configurado uma vez) ──
 function setupRaycaster(camera, renderer) {
+
   const raycaster = new THREE.Raycaster();
-  const pointer   = new THREE.Vector2();
+
+  const pointer = new THREE.Vector2();
 
   function onTouch(e) {
+
     if (photoMeshes.length === 0) return;
 
-    const cx = e.touches ? e.touches[0].clientX : e.clientX;
-    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    const cx = e.touches
+      ? e.touches[0].clientX
+      : e.clientX;
 
-    pointer.x =  (cx / window.innerWidth)  * 2 - 1;
+    const cy = e.touches
+      ? e.touches[0].clientY
+      : e.clientY;
+
+    pointer.x = (cx / window.innerWidth) * 2 - 1;
     pointer.y = -(cy / window.innerHeight) * 2 + 1;
 
     raycaster.setFromCamera(pointer, camera);
+
     const hits = raycaster.intersectObjects(photoMeshes);
 
-    if (hits.length > 0 && hits[0].object.userData.isPhoto) {
-      const hit       = hits[0].object;
-      const pos       = hit.position.clone();
-      const ag        = hit.parent; // anchorGroup
-      const targetIdx = ag.userData.targetIndex;
-      const videoSrc  = CONFIG.backVideos[targetIdx];
+    if (hits.length > 0) {
 
-      if (videoSrc) openVideo(videoSrc, pos, ag);
+      const hit = hits[0].object;
+
+      const pos = hit.position.clone();
+
+      const ag = hit.parent;
+
+      const targetIdx = ag.userData.targetIndex;
+
+      const videoSrc = CONFIG.backVideos[targetIdx];
+
+      if (videoSrc) {
+        openVideo(videoSrc, pos, ag);
+      }
     }
   }
 
-  renderer.domElement.addEventListener('touchstart', onTouch, { passive: true });
-  renderer.domElement.addEventListener('click', onTouch);
+  renderer.domElement.addEventListener(
+    'touchstart',
+    onTouch,
+    { passive: true }
+  );
+
+  renderer.domElement.addEventListener(
+    'click',
+    onTouch
+  );
 }
 
-// ── ARRANQUE ──
 document.getElementById('start-btn').addEventListener('click', async () => {
+
   document.getElementById('start-btn').style.display = 'none';
 
   const mindarThree = new MindARThree({
+
     container: document.getElementById('ar-container'),
+
     imageTargetSrc: 'assets/targets.mind',
+
     maxTrack: 1,
+
+    // TRACKING SUAVE
+    filterMinCF: 0.0001,
+    filterBeta: 0.01,
+
     uiLoading: 'no',
     uiScanning: 'no',
-    uiError:   'no',
+    uiError: 'no',
+
     videoSettings: {
       facingMode: 'environment',
-      width:  { ideal: 1920 },
+      width: { ideal: 1920 },
       height: { ideal: 1080 }
     }
   });
 
   const { renderer, scene, camera } = mindarThree;
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
 
-  // Raycaster único
+  scene.add(
+    new THREE.HemisphereLight(
+      0xffffff,
+      0xbbbbff,
+      1
+    )
+  );
+
   setupRaycaster(camera, renderer);
 
-  // Fechar vídeo
   closeBtn.addEventListener('click', closeVideo);
 
-  // ── Criar anchors ──
-  const anchors = Array.from({ length: CONFIG.totalTargets }, (_, i) => mindarThree.addAnchor(i));
+  const anchors = Array.from(
+    { length: CONFIG.totalTargets },
+    (_, i) => mindarThree.addAnchor(i)
+  );
 
-  // ══ TARGET 0 — FRENTE ══
-  const frontAnchor  = anchors[0];
+  // FRONT TARGET
+  const frontAnchor = anchors[0];
+
   const frontCorners = createCorners();
+
   frontAnchor.group.add(frontCorners);
 
   const frontVid = document.createElement('video');
-  frontVid.src         = CONFIG.frontVideo;
+
+  frontVid.src = CONFIG.frontVideo;
   frontVid.crossOrigin = 'anonymous';
-  frontVid.loop        = true;
-  frontVid.muted       = false;
+  frontVid.loop = true;
+  frontVid.muted = false;
   frontVid.playsInline = true;
-  frontVid.preload     = 'auto';
 
   const frontTex = new THREE.VideoTexture(frontVid);
-  frontTex.minFilter = THREE.LinearFilter;
-  frontTex.magFilter = THREE.LinearFilter;
 
   const frontMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(CONFIG.videoWidth, CONFIG.videoHeight),
-    new THREE.MeshBasicMaterial({ map: frontTex, transparent: true, opacity: 0, side: THREE.DoubleSide })
+
+    new THREE.PlaneGeometry(
+      CONFIG.videoWidth,
+      CONFIG.videoHeight
+    ),
+
+    new THREE.MeshBasicMaterial({
+      map: frontTex,
+      transparent: true,
+      opacity: 0,
+      side: THREE.DoubleSide
+    })
   );
+
   frontMesh.position.set(0.8, 0.1, 0);
+
   frontMesh.visible = false;
+
   frontAnchor.group.add(frontMesh);
 
   frontAnchor.onTargetFound = () => {
+
     frontCorners.visible = true;
+
     setTimeout(() => {
+
       fadeOutCorners(frontCorners, () => {
+
         frontMesh.visible = true;
-        let op = 0;
-        const fi = setInterval(() => {
-          op += 0.05;
-          frontMesh.material.opacity = Math.min(1, op);
-          if (op >= 1) clearInterval(fi);
+
+        let opacity = 0;
+
+        const fade = setInterval(() => {
+
+          opacity += 0.05;
+
+          frontMesh.material.opacity = Math.min(opacity, 1);
+
+          if (opacity >= 1) {
+            clearInterval(fade);
+          }
+
         }, 30);
+
         frontVid.play().catch(() => {
-          document.body.addEventListener('click', () => frontVid.play(), { once: true });
+
+          document.body.addEventListener('click', () => {
+            frontVid.play();
+          }, { once: true });
+
         });
+
       });
+
     }, 1200);
   };
 
   frontAnchor.onTargetLost = () => {
+
     frontCorners.visible = false;
-    frontMesh.visible    = false;
+
+    frontMesh.visible = false;
+
     frontVid.pause();
   };
 
-  // ══ TARGETS 1-6 — VERSO ══
-  // Usar função imediata para evitar problema de closure com o loop
+  // TARGETS 1-6
   anchors.slice(1).forEach((anchor, idx) => {
-    const targetIndex = idx + 1; // 1 a 6
+
+    const targetIndex = idx + 1;
+
     anchor.group.userData.targetIndex = targetIndex;
 
-    const corners     = createCorners();
+    const corners = createCorners();
+
     anchor.group.add(corners);
 
-    let photosShown   = false;
+    let photosShown = false;
+
     let currentPhotos = [];
 
     anchor.onTargetFound = () => {
+
       corners.visible = true;
 
       setTimeout(() => {
+
         fadeOutCorners(corners, () => {
+
           if (!photosShown) {
-            photosShown   = true;
-            currentPhotos = createPhotoArc(anchor.group, CONFIG.virtualPhotos[targetIndex]);
-            photoMeshes   = currentPhotos;
+
+            photosShown = true;
+
+            currentPhotos = createPhotoWall(
+              anchor.group,
+              CONFIG.virtualPhotos[targetIndex]
+            );
+
+            photoMeshes = currentPhotos;
+
             showStatus('Toca numa foto');
           }
+
         });
+
       }, 1200);
     };
 
     anchor.onTargetLost = () => {
+
       corners.visible = false;
-      // fotos ficam no ar
+
     };
   });
 
   try {
+
     await mindarThree.start();
-    renderer.setAnimationLoop(() => renderer.render(scene, camera));
+
+    renderer.setAnimationLoop(() => {
+      renderer.render(scene, camera);
+    });
+
   } catch(err) {
+
     console.error(err);
+
     showStatus('Erro: ' + err.message);
   }
+
 });
+
 </script>
 </body>
 </html>
