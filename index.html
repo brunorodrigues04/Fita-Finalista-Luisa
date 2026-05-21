@@ -175,20 +175,20 @@
         dark: 0x050505
       },
 
-     video: {
-          width: 0.85,
-          height: 1.45,
-          z: 0.05
-        },
+      video: {
+        width: 0.52,
+        height: 1.08,
+        z: 0.075
+      },
 
       photos: {
-          width: 0.48,
-          height: 0.68,
-          spacingX: 0.58,
-          spacingY: 0.78,
-          z: 0.04,
-          columns: 2
-        },
+        width: 0.32,
+        height: 0.45,
+        spacingX: 0.43,
+        spacingY: 0.54,
+        z: 0.06,
+        columns: 3
+      },
 
       interaction: {
         galleryActivation: 'tapTarget',
@@ -533,35 +533,35 @@
       return mesh;
     }
 
-   function createPhotoCard(url, controller, index) {
+    function createPhotoCard(url, controller, index) {
       const { width, height } = CONFIG.photos;
-
       const group = new THREE.Group();
-
       const texture = new THREE.TextureLoader().load(url);
+
       texture.colorSpace = THREE.SRGBColorSpace;
 
-      const backplate = createBackplate(width + 0.04, height + 0.04, 0.5);
-      backplate.position.z = -0.01;
+      const backplate = createBackplate(width + 0.035, height + 0.035, 0.54);
+      backplate.position.z = -0.009;
 
       const image = new THREE.Mesh(
         new THREE.PlaneGeometry(width, height),
         new THREE.MeshBasicMaterial({
           map: texture,
           transparent: true,
+          opacity: 1,
           side: THREE.DoubleSide
         })
       );
 
-      group.add(backplate);
-      group.add(createFrame(width, height));
-      group.add(image);
-
-      group.visible = false;
-
       image.userData.isPhoto = true;
+      image.userData.photoIndex = index;
       image.userData.controller = controller;
       image.userData.cardGroup = group;
+
+      group.userData.isPhotoCard = true;
+      group.userData.imageMesh = image;
+      group.add(backplate, createFrame(width, height), image);
+      group.visible = false;
 
       return { group, image };
     }
@@ -579,41 +579,41 @@
       }
 
       async open({ src, controller }) {
+        if (!src || !controller?.worldGroup?.visible) return;
 
-          if (!src || !controller?.worldGroup?.visible) return;
-
-          if (this.current) {
-            this.close({ instant: true });
-          }
-
-          const video = createVideoElement(src, {
-            loop: true,
-            muted: false
-          });
-
-          const panel = createVideoPanel(video, CONFIG.video);
-
-          // VIDEO DO LADO ESQUERDO
-          panel.position.set(
-            -0.72,
-            -0.15,
-            CONFIG.video.z
-          );
-
-          panel.scale.setScalar(1);
-
-          controller.worldGroup.add(panel);
-
-          this.current = {
-            controller,
-            video,
-            panel
-          };
-
-          this.closeButton.classList.add('is-visible');
-
-          await playVideoWithFallback(video, this.app.toast);
+        if (this.current?.controller === controller) {
+          return;
         }
+
+        if (this.current) {
+          this.close({ instant: true });
+        }
+
+        controller.setGalleryDimmed(true);
+
+        const video = createVideoElement(src, { loop: false, muted: false });
+        const panel = createVideoPanel(video, CONFIG.video);
+
+        panel.position.set(0, 0.02, CONFIG.video.z + 0.08);
+        panel.scale.setScalar(0.92);
+        setObjectOpacity(panel, 0);
+
+        controller.worldGroup.add(panel);
+
+        this.current = { controller, video, panel };
+        this.closeButton.classList.add('is-visible');
+
+        Tween.to({
+          duration: 260,
+          onUpdate: (t) => {
+            panel.scale.setScalar(0.92 + t * 0.08);
+            setObjectOpacity(panel, t);
+          }
+        });
+
+        video.addEventListener('ended', () => this.close(), { once: true });
+        await playVideoWithFallback(video, this.app.toast);
+      }
 
       close({ instant = false } = {}) {
         if (!this.current) return;
@@ -841,70 +841,50 @@
       }
 
       buildGallery() {
-          const photos = this.config.photos || [];
+        const photos = this.config.photos || [];
+        const { columns, spacingX, spacingY, z } = CONFIG.photos;
+        const rows = Math.ceil(photos.length / columns);
 
-          const {
-            spacingY,
+        photos.forEach((url, index) => {
+          const col = index % columns;
+          const row = Math.floor(index / columns);
+          const colCenter = (columns - 1) / 2;
+          const rowCenter = (rows - 1) / 2;
+
+          const card = createPhotoCard(url, this, index);
+          card.group.position.set(
+            (col - colCenter) * spacingX,
+            (rowCenter - row) * spacingY + 0.06,
             z
-          } = CONFIG.photos;
+          );
+          card.group.scale.setScalar(0.9);
 
-          photos.forEach((url, index) => {
-
-            const card = createPhotoCard(url, this, index);
-
-            // ESCONDIDAS inicialmente
-            card.group.visible = false;
-
-            // todas aparecem do lado direito
-            card.group.position.set(
-              0.75,
-              0.4 - (index * spacingY),
-              z
-            );
-
-            this.worldGroup.add(card.group);
-
-            this.photoCards.push(card);
-
-            this.photoPickMeshes.push(card.image);
-
-            this.app.registerPhotoPickMesh(card.image);
-          });
-        }
+          this.worldGroup.add(card.group);
+          this.photoCards.push(card);
+          this.photoPickMeshes.push(card.image);
+          this.app.registerPhotoPickMesh(card.image);
+        });
+      }
 
       showGallery() {
+        this.photoCards.forEach((card, index) => {
+          card.group.visible = true;
+          setObjectOpacity(card.group, 0);
+          card.group.scale.setScalar(0.9);
 
-  // esconder todas primeiro
-  this.photoCards.forEach((card) => {
-    card.group.visible = false;
-  });
+          window.setTimeout(() => {
+            if (!this.isTracking) return;
 
-  // mostrar apenas primeira
-  if (this.photoCards[0]) {
-
-    const card = this.photoCards[0];
-
-    card.group.visible = true;
-
-    setObjectOpacity(card.group, 0);
-
-    Tween.to({
-      duration: 350,
-      onUpdate: (t) => {
-        setObjectOpacity(card.group, t);
+            Tween.to({
+              duration: 320,
+              onUpdate: (t) => {
+                setObjectOpacity(card.group, t);
+                card.group.scale.setScalar(0.9 + t * 0.1);
+              }
+            });
+          }, index * 60);
+        });
       }
-    });
-  }
-
-  // abrir vídeo automaticamente ao lado
-  if (this.config.video) {
-
-    this.app.videoOverlay.open({
-      src: this.config.video,
-      controller: this
-    });
-  }
-}
 
       setGalleryDimmed(isDimmed) {
         if (this.config.type !== 'gallery') return;
@@ -1036,71 +1016,29 @@
       }
 
       handlePointerDown(event) {
+        if (this.videoOverlay?.current) return;
+        if (!this.photoPickMeshes.length && !this.targetPickMeshes.length) return;
 
-          if (!this.photoPickMeshes.length) return;
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-          const rect = this.renderer.domElement.getBoundingClientRect();
+        this.raycaster.setFromCamera(this.pointer, this.camera);
 
-          this.pointer.x =
-            ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        const photoHit = this.raycaster
+          .intersectObjects(this.photoPickMeshes, false)
+          .find((item) => {
+            const controller = item.object.userData.controller;
+            return controller?.isTracking && controller.worldGroup.visible;
+          });
 
-          this.pointer.y =
-            -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-          this.raycaster.setFromCamera(this.pointer, this.camera);
-
-          const photoHit = this.raycaster
-            .intersectObjects(this.photoPickMeshes, false)
-            .find((item) => {
-
-              const controller = item.object.userData.controller;
-
-              return controller?.isTracking &&
-                     controller.worldGroup.visible;
-            });
-
-          if (!photoHit) {
-
-            // tocar no target abre galeria
-            const targetHit = this.raycaster
-              .intersectObjects(this.targetPickMeshes, false)
-              .find((item) => {
-
-                const controller = item.object.userData.controller;
-
-                return controller?.isTracking &&
-                       controller.worldGroup.visible;
-              });
-
-            if (targetHit) {
-              targetHit.object.userData.controller
-                .activateGalleryFromTap();
-            }
-
-            return;
-          }
-
+        if (photoHit) {
           const controller = photoHit.object.userData.controller;
-
-          const clickedGroup =
-            photoHit.object.userData.cardGroup;
-
-          // esconder todas
-          controller.photoCards.forEach((card) => {
-            card.group.visible = false;
+          this.videoOverlay.open({
+            src: controller.config.video,
+            controller
           });
-
-          // mostrar apenas clicada
-          clickedGroup.visible = true;
-
-          setObjectOpacity(clickedGroup, 0);
-
-          Tween.to({
-            duration: 250,
-            onUpdate: (t) => {
-              setObjectOpacity(clickedGroup, t);
-            }
-          });
+          return;
         }
 
         const targetHit = this.raycaster
