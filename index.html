@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -20,718 +21,1103 @@
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
     }
 
+    html,
     body {
-      width: 100vw;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
-      background: black;
-      font-family: sans-serif;
-      color: white;
+      background: #000;
+      color: #fff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overscroll-behavior: none;
+      touch-action: none;
     }
 
     .mindar-ui-overlay,
     .mindar-ui-scanning,
-    .mindar-ui-loading {
+    .mindar-ui-loading,
+    .mindar-ui-error {
       display: none !important;
     }
 
     #ar-container {
+      position: relative;
       width: 100vw;
       height: 100vh;
-      position: relative;
+      overflow: hidden;
+      background: transparent;
+    }
+
+    /*
+      MindAR cria o video da camara com z-index negativo.
+      Alguns browsers deixam esse video atras do fundo do container.
+      Estes estilos garantem a ordem correta: camera atras, canvas AR a frente.
+    */
+    #ar-container > video {
+      z-index: 0 !important;
+      display: block !important;
+      pointer-events: none;
+    }
+
+    #ar-container > canvas {
+      z-index: 1 !important;
+    }
+
+    #ar-container > div {
+      z-index: 2 !important;
+      pointer-events: none;
+    }
+
+    #start-btn,
+    #close-video-btn {
+      position: fixed;
+      z-index: 50;
+      border: 0;
+      cursor: pointer;
+      font: inherit;
     }
 
     #start-btn {
-      position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      z-index: 20;
-
-      padding: 1rem 2rem;
-      border: none;
-      border-radius: 10px;
-
+      padding: 1rem 1.6rem;
+      border-radius: 999px;
       background: #c9a84c;
-      color: black;
-      font-size: 1rem;
-      cursor: pointer;
+      color: #050505;
+      font-weight: 700;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    #start-btn:disabled {
+      opacity: 0.65;
+      cursor: default;
     }
 
     #status {
       position: fixed;
-      top: 20px;
       left: 50%;
+      bottom: 28px;
       transform: translateX(-50%);
-      z-index: 20;
-
-      background: rgba(0,0,0,0.7);
-      padding: 0.6rem 1.2rem;
+      z-index: 55;
+      max-width: min(88vw, 520px);
+      padding: 0.7rem 1.05rem;
+      border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: 999px;
+      background: rgba(0, 0, 0, 0.72);
+      color: #fff;
+      font-size: 0.88rem;
+      line-height: 1.25;
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      backdrop-filter: blur(12px);
+    }
 
-      font-size: 0.85rem;
-
-      display: none;
+    #status.is-visible {
       opacity: 1;
-
-      transition: opacity 0.5s;
+      transform: translateX(-50%) translateY(-4px);
     }
 
     #close-video-btn {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 50;
-
-      background: rgba(0,0,0,0.7);
-      color: white;
-
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 999px;
-
-      padding: 0.6rem 1rem;
-      cursor: pointer;
-
+      top: 18px;
+      right: 18px;
       display: none;
+      padding: 0.65rem 1rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(0, 0, 0, 0.72);
+      color: #fff;
+      backdrop-filter: blur(12px);
+    }
+
+    #close-video-btn.is-visible {
+      display: block;
     }
   </style>
 </head>
 <body>
-
-<button id="start-btn">Iniciar AR</button>
-
-<div id="status"></div>
-
-<button id="close-video-btn">
-  ✕ Fechar
-</button>
-
-<div id="ar-container"></div>
-
-<script type="module">
-
-import * as THREE from 'three';
-import { MindARThree } from 'mindar-image-three';
-
-const CONFIG = {
-
-  totalTargets: 7,
-
-  frontVideo: 'assets/video0.mp4',
-
-  backVideos: [
-    null,
-    'assets/video1.mp4',
-    'assets/video2.mp4',
-    'assets/video3.mp4',
-    'assets/video4.mp4',
-    'assets/video5.mp4',
-    'assets/video6.mp4',
-  ],
-
-  virtualPhotos: [
-
-    null,
-
-    [
-      'assets/photos/target1/foto1.jpg',
-      'assets/photos/target1/foto2.jpg',
-      'assets/photos/target1/foto3.jpg',
-      'assets/photos/target1/foto4.jpg',
-      'assets/photos/target1/foto5.jpg',
-      'assets/photos/target1/foto6.jpg'
-    ],
-
-    [
-      'assets/photos/target2/foto1.jpg',
-      'assets/photos/target2/foto2.jpg',
-      'assets/photos/target2/foto3.jpg',
-      'assets/photos/target2/foto4.jpg',
-      'assets/photos/target2/foto5.jpg',
-      'assets/photos/target2/foto6.jpg'
-    ],
-
-    [
-      'assets/photos/target3/foto1.jpg',
-      'assets/photos/target3/foto2.jpg',
-      'assets/photos/target3/foto3.jpg',
-      'assets/photos/target3/foto4.jpg',
-      'assets/photos/target3/foto5.jpg',
-      'assets/photos/target3/foto6.jpg'
-    ],
-
-    [
-      'assets/photos/target4/foto1.jpg',
-      'assets/photos/target4/foto2.jpg',
-      'assets/photos/target4/foto3.jpg',
-      'assets/photos/target4/foto4.jpg',
-      'assets/photos/target4/foto5.jpg',
-      'assets/photos/target4/foto6.jpg'
-    ],
-
-    [
-      'assets/photos/target5/foto1.jpg',
-      'assets/photos/target5/foto2.jpg',
-      'assets/photos/target5/foto3.jpg',
-      'assets/photos/target5/foto4.jpg',
-      'assets/photos/target5/foto5.jpg',
-      'assets/photos/target5/foto6.jpg'
-    ],
-
-    [
-      'assets/photos/target6/foto1.jpg',
-      'assets/photos/target6/foto2.jpg',
-      'assets/photos/target6/foto3.jpg',
-      'assets/photos/target6/foto4.jpg',
-      'assets/photos/target6/foto5.jpg',
-      'assets/photos/target6/foto6.jpg'
-    ]
-  ],
-
-  photoWidth: 0.35,
-  photoHeight: 0.5,
-
-  videoWidth: 0.5,
-  videoHeight: 1.1,
-};
-
-let activeVideoMesh = null;
-let activeVideo = null;
-let activeAnchorGroup = null;
-
-let photoMeshes = [];
-
-const statusEl = document.getElementById('status');
-const closeBtn = document.getElementById('close-video-btn');
-
-function showStatus(msg) {
-
-  statusEl.style.display = 'block';
-  statusEl.style.opacity = '1';
-  statusEl.textContent = msg;
-
-  setTimeout(() => {
-    statusEl.style.opacity = '0';
-  }, 2000);
-
-  setTimeout(() => {
-    statusEl.style.display = 'none';
-    statusEl.style.opacity = '1';
-  }, 2600);
-}
-
-function createCorners() {
-
-  const makeCorner = (x, y, rot) => {
-
-    const g = new THREE.Group();
-
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0x00ff00,
-      transparent: true,
-      opacity: 1,
-      side: THREE.DoubleSide
-    });
-
-    const h = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.08, 0.01),
-      mat.clone()
-    );
-
-    const v = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.01, 0.08),
-      mat.clone()
-    );
-
-    h.position.set(0.035, 0, 0);
-    v.position.set(0, -0.035, 0);
-
-    g.add(h, v);
-
-    g.position.set(x, y, 0.01);
-    g.rotation.z = rot;
-
-    return g;
-  };
-
-  const c = new THREE.Group();
-
-  c.add(makeCorner(-0.32, 0.18, 0));
-  c.add(makeCorner(0.32, 0.18, Math.PI / 2));
-  c.add(makeCorner(-0.32, -0.18, -Math.PI / 2));
-  c.add(makeCorner(0.32, -0.18, Math.PI));
-
-  c.visible = false;
-
-  return c;
-}
-
-function fadeOutCorners(corners, onDone) {
-
-  let opacity = 1;
-
-  const iv = setInterval(() => {
-
-    opacity -= 0.05;
-
-    corners.children.forEach(c => {
-      c.children.forEach(line => {
-        line.material.opacity = Math.max(0, opacity);
-      });
-    });
-
-    if (opacity <= 0) {
-
-      clearInterval(iv);
-
-      corners.visible = false;
-
-      corners.children.forEach(c => {
-        c.children.forEach(line => {
-          line.material.opacity = 1;
-        });
-      });
-
-      if (onDone) onDone();
-    }
-
-  }, 30);
-}
-
-function createPhotoWall(anchorGroup, photoUrls) {
-
-  const loader = new THREE.TextureLoader();
-
-  const meshes = [];
-
-  const count = photoUrls.length;
-
-  const spacing = 0.42;
-
-  photoUrls.forEach((url, i) => {
-
-    const x = (i - (count - 1) / 2) * spacing;
-
-    const y = 0.25;
-
-    const z = -1.4;
-
-    const texture = loader.load(url);
-
-    const material = new THREE.MeshBasicMaterial({
-      map: texture,
-      transparent: true,
-      opacity: 0,
-      side: THREE.DoubleSide
-    });
-
-    const geometry = new THREE.PlaneGeometry(
-      CONFIG.photoWidth,
-      CONFIG.photoHeight
-    );
-
-    const mesh = new THREE.Mesh(geometry, material);
-
-    mesh.position.set(x, y, z);
-
-    // TODAS DIREITAS
-    mesh.rotation.y = 0;
-
-    mesh.userData.photoIndex = i;
-    mesh.userData.isPhoto = true;
-
-    anchorGroup.add(mesh);
-
-    meshes.push(mesh);
-
-    setTimeout(() => {
-
-      let opacity = 0;
-
-      const fade = setInterval(() => {
-
-        opacity += 0.05;
-
-        mesh.material.opacity = Math.min(opacity, 1);
-
-        if (opacity >= 1) {
-          clearInterval(fade);
+  <button id="start-btn" type="button">Iniciar AR</button>
+  <div id="status" role="status" aria-live="polite"></div>
+  <button id="close-video-btn" type="button">Fechar</button>
+  <div id="ar-container"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { MindARThree } from 'mindar-image-three';
+
+    const CONFIG = {
+      containerSelector: '#ar-container',
+      targetFile: 'assets/targets.mind',
+
+      tracking: {
+        maxTrack: 3,
+        warmupTolerance: 3,
+        missTolerance: 20,
+        filterMinCF: 0.001,
+        filterBeta: 1000,
+        lostGraceMs: 750
+      },
+
+      camera: {
+        facingMode: 'environment',
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+
+      theme: {
+        gold: 0xc9a84c,
+        green: 0x00ff66,
+        dark: 0x050505
+      },
+
+     video: {
+          width: 0.85,
+          height: 1.45,
+          z: 0.05
+        },
+
+      photos: {
+          width: 0.48,
+          height: 0.68,
+          spacingX: 0.58,
+          spacingY: 0.78,
+          z: 0.04,
+          columns: 2
+        },
+
+      interaction: {
+        galleryActivation: 'tapTarget',
+        autoOpenDelayMs: 650,
+        targetHitWidth: 0.78,
+        targetHitHeight: 0.5
+      },
+
+      targets: [
+        {
+          type: 'front',
+          video: 'assets/video0.mp4',
+          loop: true,
+          position: { x: 0.68, y: 0.08, z: 0.075 }
+        },
+        {
+          type: 'gallery',
+          video: 'assets/video1.mp4',
+          photos: [
+            'assets/photos/target1/foto1.jpg',
+            'assets/photos/target1/foto2.jpg',
+            'assets/photos/target1/foto3.jpg',
+            'assets/photos/target1/foto4.jpg',
+            'assets/photos/target1/foto5.jpg',
+            'assets/photos/target1/foto6.jpg'
+          ]
+        },
+        {
+          type: 'gallery',
+          video: 'assets/video2.mp4',
+          photos: [
+            'assets/photos/target2/foto1.jpg',
+            'assets/photos/target2/foto2.jpg',
+            'assets/photos/target2/foto3.jpg',
+            'assets/photos/target2/foto4.jpg',
+            'assets/photos/target2/foto5.jpg',
+            'assets/photos/target2/foto6.jpg'
+          ]
+        },
+        {
+          type: 'gallery',
+          video: 'assets/video3.mp4',
+          photos: [
+            'assets/photos/target3/foto1.jpg',
+            'assets/photos/target3/foto2.jpg',
+            'assets/photos/target3/foto3.jpg',
+            'assets/photos/target3/foto4.jpg',
+            'assets/photos/target3/foto5.jpg',
+            'assets/photos/target3/foto6.jpg'
+          ]
+        },
+        {
+          type: 'gallery',
+          video: 'assets/video4.mp4',
+          photos: [
+            'assets/photos/target4/foto1.jpg',
+            'assets/photos/target4/foto2.jpg',
+            'assets/photos/target4/foto3.jpg',
+            'assets/photos/target4/foto4.jpg',
+            'assets/photos/target4/foto5.jpg',
+            'assets/photos/target4/foto6.jpg'
+          ]
+        },
+        {
+          type: 'gallery',
+          video: 'assets/video5.mp4',
+          photos: [
+            'assets/photos/target5/foto1.jpg',
+            'assets/photos/target5/foto2.jpg',
+            'assets/photos/target5/foto3.jpg',
+            'assets/photos/target5/foto4.jpg',
+            'assets/photos/target5/foto5.jpg',
+            'assets/photos/target5/foto6.jpg'
+          ]
+        },
+        {
+          type: 'gallery',
+          video: 'assets/video6.mp4',
+          photos: [
+            'assets/photos/target6/foto1.jpg',
+            'assets/photos/target6/foto2.jpg',
+            'assets/photos/target6/foto3.jpg',
+            'assets/photos/target6/foto4.jpg',
+            'assets/photos/target6/foto5.jpg',
+            'assets/photos/target6/foto6.jpg'
+          ]
         }
+      ]
+    };
 
-      }, 30);
+    const $ = (selector) => document.querySelector(selector);
+    const clamp01 = (value) => Math.min(1, Math.max(0, value));
+    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 
-    }, i * 100);
+    class StatusToast {
+      constructor(element) {
+        this.element = element;
+        this.hideTimer = null;
+      }
 
-  });
+      show(message, duration = 2300) {
+        window.clearTimeout(this.hideTimer);
+        this.element.textContent = message;
+        this.element.classList.add('is-visible');
 
-  return meshes;
-}
+        if (duration > 0) {
+          this.hideTimer = window.setTimeout(() => this.hide(), duration);
+        }
+      }
 
-function openVideo(videoSrc, position, anchorGroup) {
-
-  if (activeVideoMesh) {
-    closeVideo();
-  }
-
-  const vid = document.createElement('video');
-
-  vid.src = videoSrc;
-  vid.crossOrigin = 'anonymous';
-  vid.loop = false;
-  vid.muted = false;
-  vid.volume = 1;
-  vid.playsInline = true;
-  vid.preload = 'auto';
-
-  vid.addEventListener('ended', closeVideo);
-
-  const tex = new THREE.VideoTexture(vid);
-
-  tex.minFilter = THREE.LinearFilter;
-  tex.magFilter = THREE.LinearFilter;
-
-  const mesh = new THREE.Mesh(
-
-    new THREE.PlaneGeometry(
-      CONFIG.videoWidth,
-      CONFIG.videoHeight
-    ),
-
-    new THREE.MeshBasicMaterial({
-      map: tex,
-      transparent: true,
-      opacity: 0,
-      side: THREE.DoubleSide
-    })
-  );
-
-  mesh.position.set(
-    position.x,
-    position.y + 0.1,
-    position.z + 0.01
-  );
-
-  anchorGroup.add(mesh);
-
-  let opacity = 0;
-
-  const fade = setInterval(() => {
-
-    opacity += 0.05;
-
-    mesh.material.opacity = Math.min(opacity, 1);
-
-    if (opacity >= 1) {
-      clearInterval(fade);
-    }
-
-  }, 30);
-
-  vid.play().catch(() => {
-
-    showStatus('Toque para ativar som');
-
-    document.body.addEventListener('click', () => {
-      vid.play();
-    }, { once: true });
-
-  });
-
-  activeVideoMesh = mesh;
-  activeVideo = vid;
-  activeAnchorGroup = anchorGroup;
-
-  closeBtn.style.display = 'block';
-}
-
-function closeVideo() {
-
-  if (!activeVideoMesh) return;
-
-  const mesh = activeVideoMesh;
-  const vid = activeVideo;
-  const ag = activeAnchorGroup;
-
-  activeVideoMesh = null;
-  activeVideo = null;
-  activeAnchorGroup = null;
-
-  closeBtn.style.display = 'none';
-
-  let opacity = 1;
-
-  const fade = setInterval(() => {
-
-    opacity -= 0.06;
-
-    mesh.material.opacity = Math.max(0, opacity);
-
-    if (opacity <= 0) {
-
-      clearInterval(fade);
-
-      vid.pause();
-      vid.src = '';
-
-      ag.remove(mesh);
-    }
-
-  }, 30);
-}
-
-function setupRaycaster(camera, renderer) {
-
-  const raycaster = new THREE.Raycaster();
-
-  const pointer = new THREE.Vector2();
-
-  function onTouch(e) {
-
-    if (photoMeshes.length === 0) return;
-
-    const cx = e.touches
-      ? e.touches[0].clientX
-      : e.clientX;
-
-    const cy = e.touches
-      ? e.touches[0].clientY
-      : e.clientY;
-
-    pointer.x = (cx / window.innerWidth) * 2 - 1;
-    pointer.y = -(cy / window.innerHeight) * 2 + 1;
-
-    raycaster.setFromCamera(pointer, camera);
-
-    const hits = raycaster.intersectObjects(photoMeshes);
-
-    if (hits.length > 0) {
-
-      const hit = hits[0].object;
-
-      const pos = hit.position.clone();
-
-      const ag = hit.parent;
-
-      const targetIdx = ag.userData.targetIndex;
-
-      const videoSrc = CONFIG.backVideos[targetIdx];
-
-      if (videoSrc) {
-        openVideo(videoSrc, pos, ag);
+      hide() {
+        window.clearTimeout(this.hideTimer);
+        this.element.classList.remove('is-visible');
       }
     }
-  }
 
-  renderer.domElement.addEventListener(
-    'touchstart',
-    onTouch,
-    { passive: true }
-  );
+    class Tween {
+      static to({ duration = 300, onUpdate, onComplete }) {
+        let frameId = 0;
+        let cancelled = false;
+        const start = performance.now();
 
-  renderer.domElement.addEventListener(
-    'click',
-    onTouch
-  );
-}
+        const tick = (now) => {
+          if (cancelled) return;
 
-document.getElementById('start-btn').addEventListener('click', async () => {
+          const progress = clamp01((now - start) / duration);
+          onUpdate(easeOutCubic(progress), progress);
 
-  document.getElementById('start-btn').style.display = 'none';
-
-  const mindarThree = new MindARThree({
-
-    container: document.getElementById('ar-container'),
-
-    imageTargetSrc: 'assets/targets.mind',
-
-    maxTrack: 1,
-
-    // TRACKING SUAVE
-    filterMinCF: 0.0001,
-    filterBeta: 0.01,
-
-    uiLoading: 'no',
-    uiScanning: 'no',
-    uiError: 'no',
-
-    videoSettings: {
-      facingMode: 'environment',
-      width: { ideal: 1920 },
-      height: { ideal: 1080 }
-    }
-  });
-
-  const { renderer, scene, camera } = mindarThree;
-
-  scene.add(
-    new THREE.HemisphereLight(
-      0xffffff,
-      0xbbbbff,
-      1
-    )
-  );
-
-  setupRaycaster(camera, renderer);
-
-  closeBtn.addEventListener('click', closeVideo);
-
-  const anchors = Array.from(
-    { length: CONFIG.totalTargets },
-    (_, i) => mindarThree.addAnchor(i)
-  );
-
-  // FRONT TARGET
-  const frontAnchor = anchors[0];
-
-  const frontCorners = createCorners();
-
-  frontAnchor.group.add(frontCorners);
-
-  const frontVid = document.createElement('video');
-
-  frontVid.src = CONFIG.frontVideo;
-  frontVid.crossOrigin = 'anonymous';
-  frontVid.loop = true;
-  frontVid.muted = false;
-  frontVid.playsInline = true;
-
-  const frontTex = new THREE.VideoTexture(frontVid);
-
-  const frontMesh = new THREE.Mesh(
-
-    new THREE.PlaneGeometry(
-      CONFIG.videoWidth,
-      CONFIG.videoHeight
-    ),
-
-    new THREE.MeshBasicMaterial({
-      map: frontTex,
-      transparent: true,
-      opacity: 0,
-      side: THREE.DoubleSide
-    })
-  );
-
-  frontMesh.position.set(0.8, 0.1, 0);
-
-  frontMesh.visible = false;
-
-  frontAnchor.group.add(frontMesh);
-
-  frontAnchor.onTargetFound = () => {
-
-    frontCorners.visible = true;
-
-    setTimeout(() => {
-
-      fadeOutCorners(frontCorners, () => {
-
-        frontMesh.visible = true;
-
-        let opacity = 0;
-
-        const fade = setInterval(() => {
-
-          opacity += 0.05;
-
-          frontMesh.material.opacity = Math.min(opacity, 1);
-
-          if (opacity >= 1) {
-            clearInterval(fade);
+          if (progress < 1) {
+            frameId = requestAnimationFrame(tick);
+          } else if (onComplete) {
+            onComplete();
           }
+        };
 
-        }, 30);
+        frameId = requestAnimationFrame(tick);
 
-        frontVid.play().catch(() => {
+        return () => {
+          cancelled = true;
+          cancelAnimationFrame(frameId);
+        };
+      }
+    }
 
-          document.body.addEventListener('click', () => {
-            frontVid.play();
-          }, { once: true });
+    function setObjectOpacity(root, opacity) {
+      root.traverse((object) => {
+        const material = object.material;
+        if (!material) return;
 
+        const materials = Array.isArray(material) ? material : [material];
+        materials.forEach((mat) => {
+          mat.transparent = true;
+          mat.opacity = opacity;
+          mat.needsUpdate = true;
         });
+      });
+    }
 
+    function disposeMaterial(material) {
+      if (!material) return;
+
+      if (Array.isArray(material)) {
+        material.forEach(disposeMaterial);
+        return;
+      }
+
+      if (material.map) material.map.dispose();
+      material.dispose?.();
+    }
+
+    function disposeObject3D(object) {
+      object.traverse((child) => {
+        child.geometry?.dispose?.();
+        disposeMaterial(child.material);
+      });
+    }
+
+    function createVideoElement(src, { loop = false, muted = false } = {}) {
+      const video = document.createElement('video');
+
+      video.crossOrigin = 'anonymous';
+      video.loop = loop;
+      video.muted = muted;
+      video.volume = 1;
+      video.playsInline = true;
+      video.preload = 'auto';
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+      video.src = src;
+      video.load();
+
+      return video;
+    }
+
+    async function playVideoWithFallback(video, toast) {
+      try {
+        await video.play();
+        return true;
+      } catch (error) {
+        toast.show('Toca no ecrã para ativar o som', 0);
+
+        const unlock = async () => {
+          try {
+            await video.play();
+            toast.hide();
+          } catch (err) {
+            toast.show('O browser bloqueou o som', 2200);
+          }
+        };
+
+        window.addEventListener('pointerdown', unlock, { once: true });
+        return false;
+      }
+    }
+
+    function createFrame(width, height, color = CONFIG.theme.gold) {
+      const group = new THREE.Group();
+      const thickness = 0.018;
+      const mat = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.95,
+        side: THREE.DoubleSide
       });
 
-    }, 1200);
-  };
+      const top = new THREE.Mesh(new THREE.PlaneGeometry(width + thickness * 2, thickness), mat.clone());
+      const bottom = new THREE.Mesh(new THREE.PlaneGeometry(width + thickness * 2, thickness), mat.clone());
+      const left = new THREE.Mesh(new THREE.PlaneGeometry(thickness, height + thickness * 2), mat.clone());
+      const right = new THREE.Mesh(new THREE.PlaneGeometry(thickness, height + thickness * 2), mat.clone());
 
-  frontAnchor.onTargetLost = () => {
+      top.position.set(0, height / 2 + thickness / 2, -0.002);
+      bottom.position.set(0, -height / 2 - thickness / 2, -0.002);
+      left.position.set(-width / 2 - thickness / 2, 0, -0.002);
+      right.position.set(width / 2 + thickness / 2, 0, -0.002);
 
-    frontCorners.visible = false;
+      group.add(top, bottom, left, right);
+      return group;
+    }
 
-    frontMesh.visible = false;
+    function createBackplate(width, height, opacity = 0.58) {
+      return new THREE.Mesh(
+        new THREE.PlaneGeometry(width, height),
+        new THREE.MeshBasicMaterial({
+          color: CONFIG.theme.dark,
+          transparent: true,
+          opacity,
+          side: THREE.DoubleSide
+        })
+      );
+    }
 
-    frontVid.pause();
-  };
+    function createCorners() {
+      const group = new THREE.Group();
+      const size = 0.085;
+      const thickness = 0.01;
+      const x = 0.34;
+      const y = 0.2;
 
-  // TARGETS 1-6
-  anchors.slice(1).forEach((anchor, idx) => {
-
-    const targetIndex = idx + 1;
-
-    anchor.group.userData.targetIndex = targetIndex;
-
-    const corners = createCorners();
-
-    anchor.group.add(corners);
-
-    let photosShown = false;
-
-    let currentPhotos = [];
-
-    anchor.onTargetFound = () => {
-
-      corners.visible = true;
-
-      setTimeout(() => {
-
-        fadeOutCorners(corners, () => {
-
-          if (!photosShown) {
-
-            photosShown = true;
-
-            currentPhotos = createPhotoWall(
-              anchor.group,
-              CONFIG.virtualPhotos[targetIndex]
-            );
-
-            photoMeshes = currentPhotos;
-
-            showStatus('Toca numa foto');
-          }
-
+      const makeCorner = (px, py, rotation) => {
+        const corner = new THREE.Group();
+        const mat = new THREE.MeshBasicMaterial({
+          color: CONFIG.theme.green,
+          transparent: true,
+          opacity: 1,
+          side: THREE.DoubleSide
         });
 
-      }, 1200);
-    };
+        const horizontal = new THREE.Mesh(new THREE.PlaneGeometry(size, thickness), mat.clone());
+        const vertical = new THREE.Mesh(new THREE.PlaneGeometry(thickness, size), mat.clone());
 
-    anchor.onTargetLost = () => {
+        horizontal.position.set(size / 2 - thickness / 2, 0, 0);
+        vertical.position.set(0, -size / 2 + thickness / 2, 0);
 
-      corners.visible = false;
+        corner.add(horizontal, vertical);
+        corner.position.set(px, py, 0.09);
+        corner.rotation.z = rotation;
 
-    };
+        return corner;
+      };
+
+      group.add(makeCorner(-x, y, 0));
+      group.add(makeCorner(x, y, Math.PI / 2));
+      group.add(makeCorner(-x, -y, -Math.PI / 2));
+      group.add(makeCorner(x, -y, Math.PI));
+
+      group.visible = false;
+      return group;
+    }
+
+    function createVideoPanel(video, { width, height }) {
+      const group = new THREE.Group();
+      const texture = new THREE.VideoTexture(video);
+
+      texture.minFilter = THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      texture.colorSpace = THREE.SRGBColorSpace;
+
+      const shadow = createBackplate(width + 0.08, height + 0.08, 0.45);
+      shadow.position.set(0.025, -0.025, -0.018);
+
+      const videoMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(width, height),
+        new THREE.MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          opacity: 1,
+          side: THREE.DoubleSide
+        })
+      );
+
+      group.add(shadow);
+      group.add(createFrame(width, height));
+      group.add(videoMesh);
+
+      group.userData.video = video;
+      group.userData.texture = texture;
+      group.userData.videoMesh = videoMesh;
+
+      return group;
+    }
+
+    function createTargetHitArea(controller) {
+      const material = new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      });
+
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(
+          CONFIG.interaction.targetHitWidth,
+          CONFIG.interaction.targetHitHeight
+        ),
+        material
+      );
+
+      mesh.position.z = CONFIG.photos.z + 0.18;
+      mesh.userData.isTargetHitArea = true;
+      mesh.userData.controller = controller;
+
+      return mesh;
+    }
+
+   function createPhotoCard(url, controller, index) {
+      const { width, height } = CONFIG.photos;
+
+      const group = new THREE.Group();
+
+      const texture = new THREE.TextureLoader().load(url);
+      texture.colorSpace = THREE.SRGBColorSpace;
+
+      const backplate = createBackplate(width + 0.04, height + 0.04, 0.5);
+      backplate.position.z = -0.01;
+
+      const image = new THREE.Mesh(
+        new THREE.PlaneGeometry(width, height),
+        new THREE.MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          side: THREE.DoubleSide
+        })
+      );
+
+      group.add(backplate);
+      group.add(createFrame(width, height));
+      group.add(image);
+
+      group.visible = false;
+
+      image.userData.isPhoto = true;
+      image.userData.controller = controller;
+      image.userData.cardGroup = group;
+
+      return { group, image };
+    }
+
+    class VideoOverlayManager {
+      constructor(app) {
+        this.app = app;
+        this.current = null;
+        this.closeButton = $('#close-video-btn');
+        this.closeButton.addEventListener('click', () => this.close());
+      }
+
+      belongsTo(controller) {
+        return this.current?.controller === controller;
+      }
+
+      async open({ src, controller }) {
+
+          if (!src || !controller?.worldGroup?.visible) return;
+
+          if (this.current) {
+            this.close({ instant: true });
+          }
+
+          const video = createVideoElement(src, {
+            loop: true,
+            muted: false
+          });
+
+          const panel = createVideoPanel(video, CONFIG.video);
+
+          // VIDEO DO LADO ESQUERDO
+          panel.position.set(
+            -0.72,
+            -0.15,
+            CONFIG.video.z
+          );
+
+          panel.scale.setScalar(1);
+
+          controller.worldGroup.add(panel);
+
+          this.current = {
+            controller,
+            video,
+            panel
+          };
+
+          this.closeButton.classList.add('is-visible');
+
+          await playVideoWithFallback(video, this.app.toast);
+        }
+
+      close({ instant = false } = {}) {
+        if (!this.current) return;
+
+        const { controller, video, panel } = this.current;
+        this.current = null;
+        this.closeButton.classList.remove('is-visible');
+        controller.setGalleryDimmed(false);
+
+        const finish = () => {
+          video.pause();
+          video.removeAttribute('src');
+          video.load();
+          controller.worldGroup.remove(panel);
+          disposeObject3D(panel);
+        };
+
+        if (instant) {
+          finish();
+          return;
+        }
+
+        Tween.to({
+          duration: 220,
+          onUpdate: (t) => {
+            setObjectOpacity(panel, 1 - t);
+            panel.scale.setScalar(1 - t * 0.04);
+          },
+          onComplete: finish
+        });
+      }
+    }
+
+    class TargetController {
+      constructor(app, index, targetConfig) {
+        this.app = app;
+        this.index = index;
+        this.config = targetConfig;
+        this.anchor = app.mindarThree.addAnchor(index);
+        this.worldGroup = new THREE.Group();
+        this.worldGroup.matrixAutoUpdate = false;
+        this.worldGroup.visible = false;
+        this.app.scene.add(this.worldGroup);
+
+        this.isTracking = false;
+        this.hasCompletedIntro = false;
+        this.hasBuiltContent = false;
+        this.lostTimer = null;
+        this.introTimer = null;
+        this.autoOpenTimer = null;
+        this.sequenceId = 0;
+        this.photoCards = [];
+        this.photoPickMeshes = [];
+        this.targetHitArea = null;
+        this.frontVideo = null;
+        this.frontPanel = null;
+
+        this.corners = createCorners();
+        this.worldGroup.add(this.corners);
+
+        if (this.config.type === 'front') {
+          this.createFrontContent();
+        }
+
+        if (this.config.type === 'gallery') {
+          this.targetHitArea = createTargetHitArea(this);
+          this.worldGroup.add(this.targetHitArea);
+          this.app.registerTargetPickMesh(this.targetHitArea);
+        }
+
+        this.anchor.onTargetFound = () => this.handleFound();
+        this.anchor.onTargetLost = () => this.handleLost();
+      }
+
+      createFrontContent() {
+        this.frontVideo = createVideoElement(this.config.video, {
+          loop: this.config.loop,
+          muted: false
+        });
+
+        this.frontPanel = createVideoPanel(this.frontVideo, CONFIG.video);
+        this.frontPanel.position.set(
+          this.config.position.x,
+          this.config.position.y,
+          this.config.position.z
+        );
+        this.frontPanel.visible = false;
+        setObjectOpacity(this.frontPanel, 0);
+
+        this.worldGroup.add(this.frontPanel);
+      }
+
+      copyAnchorPose() {
+        this.anchor.group.updateMatrixWorld(true);
+        this.worldGroup.matrix.copy(this.anchor.group.matrixWorld);
+        this.worldGroup.matrixWorldNeedsUpdate = true;
+        this.worldGroup.updateMatrixWorld(true);
+      }
+
+      handleFound() {
+        this.sequenceId += 1;
+        this.isTracking = true;
+        window.clearTimeout(this.lostTimer);
+        this.copyAnchorPose();
+        this.worldGroup.visible = true;
+
+        if (this.config.type === 'front') {
+          this.startFrontExperience(this.sequenceId);
+        } else if (CONFIG.interaction.galleryActivation === 'auto') {
+          this.startGalleryExperience(this.sequenceId);
+        } else {
+          this.prepareGalleryTarget();
+        }
+      }
+
+      handleLost() {
+        this.isTracking = false;
+        window.clearTimeout(this.lostTimer);
+        window.clearTimeout(this.autoOpenTimer);
+
+        this.lostTimer = window.setTimeout(() => {
+          if (this.isTracking) return;
+
+          this.corners.visible = false;
+          this.worldGroup.visible = false;
+
+          if (this.frontVideo) {
+            this.frontVideo.pause();
+          }
+
+          if (this.app.videoOverlay.belongsTo(this)) {
+            this.app.videoOverlay.close({ instant: true });
+          }
+        }, CONFIG.tracking.lostGraceMs);
+      }
+
+      startIntroOnce(sequenceId, onReady) {
+        if (this.hasCompletedIntro) {
+          onReady();
+          return;
+        }
+
+        this.corners.visible = true;
+        setObjectOpacity(this.corners, 1);
+
+        window.clearTimeout(this.introTimer);
+        this.introTimer = window.setTimeout(() => {
+          if (!this.isTracking || sequenceId !== this.sequenceId) return;
+
+          Tween.to({
+            duration: 360,
+            onUpdate: (t) => setObjectOpacity(this.corners, 1 - t),
+            onComplete: () => {
+              this.corners.visible = false;
+              setObjectOpacity(this.corners, 1);
+              this.hasCompletedIntro = true;
+              onReady();
+            }
+          });
+        }, 650);
+      }
+
+      prepareGalleryTarget() {
+        this.corners.visible = true;
+        setObjectOpacity(this.corners, 1);
+        this.app.toast.show('Toca na foto fisica para abrir', 1800);
+      }
+
+      activateGalleryFromTap() {
+        if (this.config.type !== 'gallery') return;
+        if (!this.isTracking || !this.worldGroup.visible) return;
+
+        this.startGalleryExperience(this.sequenceId);
+      }
+
+      startFrontExperience(sequenceId) {
+        this.startIntroOnce(sequenceId, async () => {
+          if (!this.isTracking || !this.frontPanel) return;
+
+          this.frontPanel.visible = true;
+
+          Tween.to({
+            duration: 320,
+            onUpdate: (t) => {
+              setObjectOpacity(this.frontPanel, t);
+              this.frontPanel.scale.setScalar(0.94 + t * 0.06);
+            }
+          });
+
+          await playVideoWithFallback(this.frontVideo, this.app.toast);
+        });
+      }
+
+      startGalleryExperience(sequenceId) {
+        this.startIntroOnce(sequenceId, () => {
+          if (!this.isTracking) return;
+
+          if (!this.hasBuiltContent) {
+            this.buildGallery();
+            this.hasBuiltContent = true;
+          }
+
+          this.showGallery();
+
+          if (this.config.video) {
+            this.app.toast.show('A abrir video...', 1400);
+            this.scheduleAutoVideoOpen(sequenceId);
+          }
+        });
+      }
+
+      scheduleAutoVideoOpen(sequenceId) {
+        if (!this.config.video) return;
+
+        window.clearTimeout(this.autoOpenTimer);
+
+        this.autoOpenTimer = window.setTimeout(() => {
+          if (!this.isTracking || sequenceId !== this.sequenceId) return;
+
+          this.app.videoOverlay.open({
+            src: this.config.video,
+            controller: this
+          });
+        }, CONFIG.interaction.autoOpenDelayMs);
+      }
+
+      buildGallery() {
+          const photos = this.config.photos || [];
+
+          const {
+            spacingY,
+            z
+          } = CONFIG.photos;
+
+          photos.forEach((url, index) => {
+
+            const card = createPhotoCard(url, this, index);
+
+            // ESCONDIDAS inicialmente
+            card.group.visible = false;
+
+            // todas aparecem do lado direito
+            card.group.position.set(
+              0.75,
+              0.4 - (index * spacingY),
+              z
+            );
+
+            this.worldGroup.add(card.group);
+
+            this.photoCards.push(card);
+
+            this.photoPickMeshes.push(card.image);
+
+            this.app.registerPhotoPickMesh(card.image);
+          });
+        }
+
+      showGallery() {
+
+  // esconder todas primeiro
+  this.photoCards.forEach((card) => {
+    card.group.visible = false;
   });
 
-  try {
+  // mostrar apenas primeira
+  if (this.photoCards[0]) {
 
-    await mindarThree.start();
+    const card = this.photoCards[0];
 
-    renderer.setAnimationLoop(() => {
-      renderer.render(scene, camera);
+    card.group.visible = true;
+
+    setObjectOpacity(card.group, 0);
+
+    Tween.to({
+      duration: 350,
+      onUpdate: (t) => {
+        setObjectOpacity(card.group, t);
+      }
     });
-
-  } catch(err) {
-
-    console.error(err);
-
-    showStatus('Erro: ' + err.message);
   }
 
-});
+  // abrir vídeo automaticamente ao lado
+  if (this.config.video) {
 
-</script>
+    this.app.videoOverlay.open({
+      src: this.config.video,
+      controller: this
+    });
+  }
+}
+
+      setGalleryDimmed(isDimmed) {
+        if (this.config.type !== 'gallery') return;
+
+        const targetOpacity = isDimmed ? 0.28 : 1;
+
+        this.photoCards.forEach((card) => {
+          Tween.to({
+            duration: 180,
+            onUpdate: (t) => {
+              const opacity = isDimmed ? 1 - t * (1 - targetOpacity) : targetOpacity + t * (1 - targetOpacity);
+              setObjectOpacity(card.group, opacity);
+            }
+          });
+        });
+      }
+
+      update() {
+        if (!this.isTracking) return;
+        this.copyAnchorPose();
+      }
+    }
+
+    class ARApp {
+      constructor() {
+        this.container = $(CONFIG.containerSelector);
+        this.startButton = $('#start-btn');
+        this.toast = new StatusToast($('#status'));
+        this.mindarThree = null;
+        this.renderer = null;
+        this.scene = null;
+        this.camera = null;
+        this.targets = [];
+        this.photoPickMeshes = [];
+        this.targetPickMeshes = [];
+        this.raycaster = new THREE.Raycaster();
+        this.pointer = new THREE.Vector2();
+        this.videoOverlay = null;
+      }
+
+      async start() {
+        this.startButton.disabled = true;
+        this.startButton.textContent = 'A iniciar...';
+        this.toast.show('A preparar a câmara...', 0);
+
+        this.mindarThree = new MindARThree({
+          container: this.container,
+          imageTargetSrc: CONFIG.targetFile,
+          maxTrack: CONFIG.tracking.maxTrack,
+          warmupTolerance: CONFIG.tracking.warmupTolerance,
+          missTolerance: CONFIG.tracking.missTolerance,
+          filterMinCF: CONFIG.tracking.filterMinCF,
+          filterBeta: CONFIG.tracking.filterBeta,
+          uiLoading: 'no',
+          uiScanning: 'no',
+          uiError: 'no'
+        });
+
+        const { renderer, scene, camera } = this.mindarThree;
+        this.renderer = renderer;
+        this.scene = scene;
+        this.camera = camera;
+
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+        this.videoOverlay = new VideoOverlayManager(this);
+        this.createTargets();
+        this.bindPointerEvents();
+
+        try {
+          await this.mindarThree.start();
+          this.fixCameraLayering();
+          this.startButton.style.display = 'none';
+          this.toast.show('Aponta a camara para a imagem');
+
+          this.renderer.setAnimationLoop(() => {
+            this.targets.forEach((target) => target.update());
+            this.renderer.render(this.scene, this.camera);
+          });
+        } catch (error) {
+          console.error(error);
+          this.toast.show('Erro ao iniciar AR. Verifica permissões e HTTPS.', 4000);
+          this.startButton.disabled = false;
+          this.startButton.textContent = 'Tentar novamente';
+          this.startButton.style.display = 'block';
+        }
+      }
+
+      createTargets() {
+        this.targets = CONFIG.targets.map((targetConfig, index) => (
+          new TargetController(this, index, targetConfig)
+        ));
+      }
+
+      registerPhotoPickMesh(mesh) {
+        this.photoPickMeshes.push(mesh);
+      }
+
+      registerTargetPickMesh(mesh) {
+        this.targetPickMeshes.push(mesh);
+      }
+
+      fixCameraLayering() {
+        const video = this.mindarThree?.video;
+
+        if (video) {
+          video.style.zIndex = '0';
+          video.style.pointerEvents = 'none';
+          video.style.display = 'block';
+        }
+
+        if (this.renderer?.domElement) {
+          this.renderer.domElement.style.zIndex = '1';
+          this.renderer.domElement.style.pointerEvents = 'auto';
+          this.renderer.domElement.style.background = 'transparent';
+        }
+
+        if (this.mindarThree?.cssRenderer?.domElement) {
+          this.mindarThree.cssRenderer.domElement.style.zIndex = '2';
+          this.mindarThree.cssRenderer.domElement.style.pointerEvents = 'none';
+        }
+      }
+
+      bindPointerEvents() {
+        this.renderer.domElement.addEventListener('pointerdown', (event) => {
+          this.handlePointerDown(event);
+        }, { passive: true });
+      }
+
+      handlePointerDown(event) {
+
+          if (!this.photoPickMeshes.length) return;
+
+          const rect = this.renderer.domElement.getBoundingClientRect();
+
+          this.pointer.x =
+            ((event.clientX - rect.left) / rect.width) * 2 - 1;
+
+          this.pointer.y =
+            -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+          this.raycaster.setFromCamera(this.pointer, this.camera);
+
+          const photoHit = this.raycaster
+            .intersectObjects(this.photoPickMeshes, false)
+            .find((item) => {
+
+              const controller = item.object.userData.controller;
+
+              return controller?.isTracking &&
+                     controller.worldGroup.visible;
+            });
+
+          if (!photoHit) {
+
+            // tocar no target abre galeria
+            const targetHit = this.raycaster
+              .intersectObjects(this.targetPickMeshes, false)
+              .find((item) => {
+
+                const controller = item.object.userData.controller;
+
+                return controller?.isTracking &&
+                       controller.worldGroup.visible;
+              });
+
+            if (targetHit) {
+              targetHit.object.userData.controller
+                .activateGalleryFromTap();
+            }
+
+            return;
+          }
+
+          const controller = photoHit.object.userData.controller;
+
+          const clickedGroup =
+            photoHit.object.userData.cardGroup;
+
+          // esconder todas
+          controller.photoCards.forEach((card) => {
+            card.group.visible = false;
+          });
+
+          // mostrar apenas clicada
+          clickedGroup.visible = true;
+
+          setObjectOpacity(clickedGroup, 0);
+
+          Tween.to({
+            duration: 250,
+            onUpdate: (t) => {
+              setObjectOpacity(clickedGroup, t);
+            }
+          });
+        }
+
+        const targetHit = this.raycaster
+          .intersectObjects(this.targetPickMeshes, false)
+          .find((item) => {
+            const controller = item.object.userData.controller;
+            return controller?.isTracking && controller.worldGroup.visible;
+          });
+
+        if (!targetHit) return;
+
+        targetHit.object.userData.controller.activateGalleryFromTap();
+      }
+    }
+
+    const app = new ARApp();
+    $('#start-btn').addEventListener('click', () => app.start(), { once: true });
+  </script>
 </body>
 </html>
