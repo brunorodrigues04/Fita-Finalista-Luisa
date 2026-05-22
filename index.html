@@ -178,16 +178,19 @@
       video: {
         width: 0.52,
         height: 1.08,
-        z: 0.075
+        z: 0.075,
+        sideGap: 0.17
       },
 
       photos: {
-        width: 0.32,
-        height: 0.45,
-        spacingX: 0.43,
-        spacingY: 0.54,
+        width: 0.42,
+        height: 0.59,
+        spacingX: 0.56,
+        spacingY: 0.69,
         z: 0.06,
-        columns: 3
+        columns: 3,
+        offsetX: 0.35,
+        offsetY: 0.06
       },
 
       interaction: {
@@ -589,12 +592,11 @@
           this.close({ instant: true });
         }
 
-        controller.setGalleryDimmed(true);
-
         const video = createVideoElement(src, { loop: false, muted: false });
         const panel = createVideoPanel(video, CONFIG.video);
+        const position = controller.getSideVideoPosition();
 
-        panel.position.set(0, 0.02, CONFIG.video.z + 0.08);
+        panel.position.set(position.x, position.y, position.z);
         panel.scale.setScalar(0.92);
         setObjectOpacity(panel, 0);
 
@@ -621,7 +623,6 @@
         const { controller, video, panel } = this.current;
         this.current = null;
         this.closeButton.classList.remove('is-visible');
-        controller.setGalleryDimmed(false);
 
         const finish = () => {
           video.pause();
@@ -840,9 +841,35 @@
         }, CONFIG.interaction.autoOpenDelayMs);
       }
 
+      getGalleryLayout() {
+        const photos = this.config.photos || [];
+        const columns = CONFIG.photos.columns;
+        const rows = Math.max(1, Math.ceil(photos.length / columns));
+        const visibleColumns = Math.min(columns, Math.max(1, photos.length));
+
+        return {
+          columns,
+          rows,
+          width: CONFIG.photos.width + (visibleColumns - 1) * CONFIG.photos.spacingX,
+          height: CONFIG.photos.height + (rows - 1) * CONFIG.photos.spacingY,
+          centerX: CONFIG.photos.offsetX || 0,
+          centerY: CONFIG.photos.offsetY || 0
+        };
+      }
+
+      getSideVideoPosition() {
+        const gallery = this.getGalleryLayout();
+
+        return {
+          x: gallery.centerX - gallery.width / 2 - CONFIG.video.sideGap - CONFIG.video.width / 2,
+          y: gallery.centerY,
+          z: CONFIG.video.z + 0.08
+        };
+      }
+
       buildGallery() {
         const photos = this.config.photos || [];
-        const { columns, spacingX, spacingY, z } = CONFIG.photos;
+        const { columns, spacingX, spacingY, z, offsetX = 0, offsetY = 0 } = CONFIG.photos;
         const rows = Math.ceil(photos.length / columns);
 
         photos.forEach((url, index) => {
@@ -853,8 +880,8 @@
 
           const card = createPhotoCard(url, this, index);
           card.group.position.set(
-            (col - colCenter) * spacingX,
-            (rowCenter - row) * spacingY + 0.06,
+            offsetX + (col - colCenter) * spacingX,
+            offsetY + (rowCenter - row) * spacingY,
             z
           );
           card.group.scale.setScalar(0.9);
